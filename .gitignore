@@ -1,0 +1,21 @@
+# Dữ liệu nuScenes và kết quả lớn: không đưa lên git (license nuScenes, dung lượng)
+data/
+detections/
+offline/results/
+baseline_B0/results.json
+*.pkl
+*.mp4
+*.jpg
+
+# Repo gốc ImmortalTracker: tham chiếu theo commit trong ImmortalTracker_COMMIT.txt, không chép lại
+ImmortalTracker/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+
+# File tự sinh sau mỗi lần chạy repro/run_rest.sh
+RESULT_*_vs_paper.md
+logs/

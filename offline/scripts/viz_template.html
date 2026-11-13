@@ -1,0 +1,57 @@
+<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>Xem tracking BEV</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:16px;background:#f7f6f2;color:#1d2630}
+h1{font-size:18px;margin:0 0 4px}#desc{font-size:13px;color:#666;margin:0 0 10px}
+.row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:13px;margin:8px 0}
+canvas{background:#fff;border:1px solid #ddd;border-radius:8px;max-width:100%}
+button{padding:5px 12px}#info{font-variant-numeric:tabular-nums}
+.lg{display:inline-flex;align-items:center;gap:5px}.sw{display:inline-block;width:22px;height:12px;border:2px solid #333;border-radius:2px}
+</style></head><body>
+<h1 id="title"></h1><p id="desc"></p>
+<div class="row"><button id="play">Chạy</button><input type="range" id="fr" min="0" value="0" style="flex:1;min-width:240px"><span id="info"></span></div>
+<div class="row">
+<label><input type="checkbox" id="cgt" checked> Nhãn thật (GT)</label>
+<label><input type="checkbox" id="clow"> Track dưới ngưỡng</label>
+<label><input type="checkbox" id="ctrail" checked> Vệt quỹ đạo</label>
+<label><input type="checkbox" id="cid"> Hiện ID</label>
+<label><input type="checkbox" id="cfollow" checked> Bám theo xe ego</label>
+<label>Class <select id="cls"><option value="-1">Tất cả</option></select></label>
+<label>Tầm nhìn <input type="range" id="zoom" min="20" max="100" value="55"> <span id="zv"></span> m</label>
+</div>
+<canvas id="cv" width="1000" height="760"></canvas>
+<div class="row">
+<span class="lg"><span class="sw" style="border-color:#888;border-style:dashed;background:#eee"></span>Nhãn thật (GT)</span>
+<span class="lg"><span class="sw" style="border-color:#2c64a8"></span>Box track có detection (màu theo ID)</span>
+<span class="lg"><span class="sw" style="border-color:#2c64a8;border-style:dashed"></span>Box dự đoán Kalman (không có detection)</span>
+<span class="lg"><span class="sw" style="border-color:#bbb"></span>Track dưới ngưỡng của bộ chấm</span>
+<span class="lg"><span class="sw" style="border-color:#111;background:#111"></span>Xe ego</span>
+</div>
+<script>
+const D=__DATA__;const F=D.frames,N=F.length;const $=id=>document.getElementById(id);
+$('title').textContent='Kết quả tracking ('+D.tag+') · '+D.name+' · góc nhìn từ trên xuống';$('desc').textContent=D.desc+' · Ngưỡng bộ chấm theo class: '+D.cls.map(c=>c+' '+D.thr[c]).join(', ');
+D.cls.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c;$('cls').appendChild(o);});
+$('fr').max=N-1;const cv=$('cv'),g=cv.getContext('2d');
+const trail={};F.forEach((f,i)=>f.tr.forEach(b=>{(trail[b[6]]=trail[b[6]]||[]).push([i,b[0],b[1],b[9],b[5]]);}));
+const col=id=>'hsl('+((id*47)%360)+',75%,'+(38+(id*13)%18)+'%)';
+let cur=0,timer=null,cx0=F[0].ego[0],cy0=F[0].ego[1];
+function draw(){const f=F[cur];const R=+$('zoom').value;$('zv').textContent=R;const s=cv.height/(2*R);
+const follow=$('cfollow').checked;const ox=follow?f.ego[0]:cx0,oy=follow?f.ego[1]:cy0;
+const X=x=>cv.width/2+(x-ox)*s,Y=y=>cv.height/2-(y-oy)*s;const cf=+$('cls').value,low=$('clow').checked;
+g.clearRect(0,0,cv.width,cv.height);
+g.strokeStyle='#eee';g.lineWidth=1;for(let r=10;r<=R*1.5;r+=10){g.beginPath();g.arc(X(f.ego[0]),Y(f.ego[1]),r*s,0,7);g.stroke();}
+function box(b,stroke,fill,dash,lw,alpha){g.save();g.globalAlpha=alpha;g.translate(X(b[0]),Y(b[1]));g.rotate(-b[4]);g.setLineDash(dash);g.lineWidth=lw;g.strokeStyle=stroke;
+const l=b[3]*s,w=b[2]*s;if(fill){g.fillStyle=fill;g.fillRect(-l/2,-w/2,l,w);}g.strokeRect(-l/2,-w/2,l,w);g.beginPath();g.moveTo(0,0);g.lineTo(l/2,0);g.stroke();g.restore();}
+if($('cgt').checked)f.gt.forEach(b=>{if(cf<0||b[5]==cf)box(b,'#888','#eeeeee',[5,4],1.5,1);});
+if($('ctrail').checked){for(const id in trail){const t=trail[id];if(cf>=0&&t[0][4]!=cf)continue;if(!low&&!t[0][3])continue;
+g.beginPath();let st=false;for(const p of t){if(p[0]>cur)break;if(!st){g.moveTo(X(p[1]),Y(p[2]));st=true;}else g.lineTo(X(p[1]),Y(p[2]));}
+g.strokeStyle=t[0][3]?col(+id):'#ccc';g.globalAlpha=t[0][3]?0.55:0.4;g.lineWidth=1.5;g.setLineDash([]);g.stroke();g.globalAlpha=1;}}
+let nt=0,nl=0,np=0;f.tr.forEach(b=>{if(cf>=0&&b[5]!=cf)return;if(!b[9]){nl++;if(low)box(b,'#bbb',null,b[8]?[4,3]:[],1,0.8);return;}
+nt++;if(b[8])np++;box(b,col(b[6]),null,b[8]?[5,4]:[],2.2,1);
+if($('cid').checked){g.fillStyle=col(b[6]);g.font='11px system-ui';g.fillText(b[6],X(b[0])+6,Y(b[1])-6);}});
+g.save();g.translate(X(f.ego[0]),Y(f.ego[1]));g.rotate(-f.ego[2]);g.fillStyle='#111';g.fillRect(-2.3*s,-1*s,4.6*s,2*s);g.restore();
+const ng=f.gt.filter(b=>cf<0||b[5]==cf).length;
+$('info').textContent='Frame '+(cur+1)+'/'+N+' · GT '+ng+' · track trên ngưỡng '+nt+' (trong đó '+np+' box dự đoán) · track dưới ngưỡng '+nl;}
+$('fr').oninput=e=>{cur=+e.target.value;draw();};['cgt','clow','ctrail','cid','cfollow','cls','zoom'].forEach(i=>$(i).oninput=draw);
+$('play').onclick=()=>{if(timer){clearInterval(timer);timer=null;$('play').textContent='Chạy';}else{$('play').textContent='Dừng';timer=setInterval(()=>{cur=(cur+1)%N;$('fr').value=cur;draw();},500);}};
+draw();
+</script></body></html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8"><title>Các trường hợp tracking kiểu CTRL — nuScenes mini</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--mut:#6b6b66;--line:#e2e0da}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:14px 20px;border-bottom:1px solid var(--line);background:var(--card)}h1{font-size:17px;margin:0 0 2px}header p{margin:0;color:var(--mut);font-size:13px}
+main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:14px;padding:14px 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+canvas{width:100%;aspect-ratio:1/1;display:block;background:#fbfaf7;border-radius:8px}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}.ctl input[type=range]{flex:1;min-width:160px}
+button,select{font:inherit;padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer}
+label{font-size:13px;color:var(--mut);user-select:none}
+.leg{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12.5px;margin-top:10px}.sw{display:inline-block;width:22px;height:11px;margin-right:6px;vertical-align:-1px;border-radius:2px}
+.ev{max-height:520px;overflow:auto}.e{padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px;border-left:4px solid #ccc;margin-bottom:4px;background:#faf9f6}.e:hover{background:#f0eee8}
+.e.on{outline:2px solid #333}.k{font-weight:600}.stat{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:8px 0}.stat div{background:#faf9f6;border-radius:6px;padding:6px 8px;font-size:12.5px}.stat b{font-size:16px;display:block}
+.note{font-size:12.5px;color:var(--mut);margin-top:8px}
+</style></head><body>
+<header><h1>Các trường hợp của khâu tracking kiểu CTRL (không có refine)</h1>
+<p>ImmortalTracker gốc (B0) + kéo dài hai chiều kiểu CTRL, trên 2 scene val có LiDAR. Nhìn từ trên xuống, xe tự lái ở giữa, hướng lên trên. Chỉ hiện track có score trung bình ≥ ngưỡng devkit chọn.</p></header>
+<main>
+<section class="card">
+ <div class="ctl"><select id="scene"></select><button id="prev">◀</button><button id="play">▶ Chạy</button><button id="next">▶</button>
+ <input id="sl" type="range" min="0" value="0"><span id="fl"></span></div>
+ <div class="ctl"><label><input type="checkbox" id="cPts" checked> Điểm LiDAR</label><label><input type="checkbox" id="cZero" checked> GT không có điểm LiDAR</label>
+ <label><input type="checkbox" id="cLab" checked> Số ID track</label><label><input type="checkbox" id="cExt" checked> Box kéo dài</label><button id="home">Về giữa xe</button><span id="desc" style="font-size:12px;color:var(--mut)"></span></div>
+ <canvas id="cv" width="900" height="900"></canvas>
+ <div class="leg">
+  <div><span class="sw" style="background:#cfccc4"></span>GT (vật thật, có điểm LiDAR)</div>
+  <div><span class="sw" style="border:1.5px dotted #9a968c"></span>GT không có điểm LiDAR (bộ chấm bỏ qua)</div>
+  <div><span class="sw" style="border:2px solid #2a6fdb"></span>Box có detection (màu theo ID)</div>
+  <div><span class="sw" style="border:2px dashed #2a6fdb"></span>Box đoán của ImmortalTracker khi bị che</div>
+  <div><span class="sw" style="background:#2e9e5b"></span>Kéo dài: đúng vật của track</div>
+  <div><span class="sw" style="background:#e08a1e"></span>Kéo dài: trùng vật khác</div>
+  <div><span class="sw" style="background:#8a5cc7"></span>Kéo dài: vật không có điểm LiDAR</div>
+  <div><span class="sw" style="background:#d64545"></span>Kéo dài: chỗ không có vật</div>
+ </div>
+</section>
+<aside class="card">
+ <div class="k">Tổng hợp box kéo dài (scene này)</div><div class="stat" id="stat"></div>
+ <div class="ctl"><span class="k">Sự kiện</span><select id="ft"><option value="">Tất cả</option><option value="keep">Giữ ID khi bị che</option><option value="switch">Đổi ID (ghép đơn giản)</option>
+ <option value="ext_same">Kéo dài đúng vật</option><option value="ext_other">Kéo dài trùng vật khác</option><option value="ext_zeropt">Kéo dài: vật không có điểm</option><option value="ext_empty">Kéo dài: chỗ trống</option></select></div>
+ <div class="ev" id="ev"></div>
+ <p class="note">Bấm một sự kiện để nhảy tới frame và tô đậm track liên quan. Box kéo dài chưa qua refine: trong CTRL, refine sẽ sửa hoặc hạ điểm các box này. "Đổi ID" dùng phép ghép đơn giản (tâm ≤ 2 m, từng frame), có thể nhiều hơn số IDS của bộ chấm nuScenes.</p>
+</aside></main>
+<script>
+const D=__DATA__;
+const KC={same:'#2e9e5b',other:'#e08a1e',zeropt:'#8a5cc7',empty:'#d64545'};
+const EC={keep:'#2a6fdb',switch:'#c43d3d',ext_same:'#2e9e5b',ext_other:'#e08a1e',ext_zeropt:'#8a5cc7',ext_empty:'#d64545'};
+const $=id=>document.getElementById(id),cv=$('cv'),ctx=cv.getContext('2d');
+let S=0,F=0,sel=null,timer=null;
+D.scenes.forEach((s,i)=>$('scene').add(new Option(`${s.name} (${s.frames.length} frame, ${s.ntracks} track)`,i)));
+const col=id=>`hsl(${195+(id*47)%90} 55% ${30+(id*13)%25}%)`; // track: dải xanh dương-tím, để màu loại box kéo dài nổi bật
+const W=900;let R=30,OX=0,OY=0; // nửa vùng nhìn (m), tâm nhìn (m, hệ xe)
+let SC=W/(2*R);
+const tp=(x,y)=>[W/2-(y-OY)*SC,W/2-(x-OX)*SC];
+function box(b,stroke,fill,dash,lw){const[x,y,l,w,a]=b,c=Math.cos(a),s=Math.sin(a);
+ const P=[[l/2,w/2],[l/2,-w/2],[-l/2,-w/2],[-l/2,w/2]].map(([u,v])=>tp(x+u*c-v*s,y+u*s+v*c));
+ ctx.beginPath();P.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.closePath();
+ if(fill){ctx.fillStyle=fill;ctx.fill()}ctx.setLineDash(dash||[]);ctx.lineWidth=lw||1.5;ctx.strokeStyle=stroke;ctx.stroke();ctx.setLineDash([]);
+ const h=tp(x+l/2*c,y+l/2*s),m=tp(x,y);ctx.beginPath();ctx.moveTo(...m);ctx.lineTo(...h);ctx.stroke();return m}
+function draw(){const s=D.scenes[S],fr=s.frames[F];SC=W/(2*R);ctx.clearRect(0,0,W,W);
+ const E=tp(0,0);ctx.strokeStyle='#ece9e2';ctx.lineWidth=1;for(let r=10;r<=50;r+=10){ctx.beginPath();ctx.arc(E[0],E[1],r*SC,0,7);ctx.stroke()}
+ ctx.fillStyle='#b3b0a8';ctx.font='11px system-ui';for(let r=10;r<=50;r+=10)ctx.fillText(r+' m',E[0]+3,E[1]-r*SC-3);
+ if($('cPts').checked){ctx.fillStyle='rgba(60,60,60,.35)';const p=fr.pts;for(let i=0;i<p.length;i+=2){const[a,b]=tp(p[i],p[i+1]);ctx.fillRect(a,b,1.6,1.6)}}
+ for(const g of fr.gt){if(!g[7]&&!$('cZero').checked)continue;box(g,g[7]?'#8f8b81':'#8f8b81',g[7]?'rgba(160,156,146,.45)':null,g[7]?null:[2,3],1.2)}
+ for(const t of fr.tr){const k=t[7],id=t[6],hi=sel===id,isExt=k in KC;if(isExt&&!$('cExt').checked)continue;
+  const c=isExt?KC[k]:col(id),m=box(t,c,isExt?c+'55':null,k==='pred'||isExt?[5,4]:null,hi?3.5:1.8);
+  if($('cLab').checked||hi){ctx.fillStyle=hi?'#000':c;ctx.font=(hi?'bold 13px':'11px')+' system-ui';ctx.fillText(id,m[0]+6,m[1]-6)}}
+ ctx.fillStyle='#1d1d1b';ctx.beginPath();ctx.moveTo(E[0],E[1]-12);ctx.lineTo(E[0]-7,E[1]+8);ctx.lineTo(E[0]+7,E[1]+8);ctx.closePath();ctx.fill();
+ ctx.fillStyle='#6b6b66';ctx.font='12px system-ui';ctx.fillText(`vùng nhìn ±${R} m · cuộn chuột để phóng to/thu nhỏ`,10,W-10);
+ $('fl').textContent=`frame ${F}/${s.frames.length-1} · ${(F*0.5).toFixed(1)} s`;$('sl').value=F}
+function list(){const s=D.scenes[S],ft=$('ft').value;$('ev').innerHTML='';
+ s.events.filter(e=>!ft||e.type===ft).forEach(e=>{const d=document.createElement('div');d.className='e';d.style.borderLeftColor=EC[e.type];d.textContent=e.txt;
+  d.onclick=()=>{F=e.f;sel=e.tid;const t=s.frames[F].tr.find(b=>b[6]===e.tid);if(t){OX=t[0];OY=t[1];R=Math.min(R,20)}document.querySelectorAll('.e').forEach(x=>x.classList.remove('on'));d.classList.add('on');draw()};$('ev').appendChild(d)});
+ if(!$('ev').children.length)$('ev').innerHTML='<p class="note">Không có sự kiện loại này.</p>'}
+function stat(){const s=D.scenes[S],x=s.ext,n=k=>x[k]||0,t=n('same')+n('other')+n('zeropt')+n('empty')||1;
+ $('stat').innerHTML=[['same','Đúng vật'],['other','Trùng vật khác'],['zeropt','Vật không có điểm'],['empty','Chỗ không có vật']].map(([k,l])=>`<div style="border-left:4px solid ${KC[k]}"><b>${n(k)}</b>${l} · ${Math.round(100*n(k)/t)}%</div>`).join('');
+ $('desc').textContent=s.desc}
+function load(){const s=D.scenes[S];$('sl').max=s.frames.length-1;F=0;sel=null;OX=OY=0;R=30;stat();list();draw()}
+$('scene').onchange=e=>{S=+e.target.value;load()};$('sl').oninput=e=>{F=+e.target.value;draw()};
+$('prev').onclick=()=>{F=Math.max(0,F-1);draw()};$('next').onclick=()=>{F=Math.min(D.scenes[S].frames.length-1,F+1);draw()};
+$('play').onclick=()=>{if(timer){clearInterval(timer);timer=null;$('play').textContent='▶ Chạy';return}$('play').textContent='❚❚ Dừng';
+ timer=setInterval(()=>{F=(F+1)%D.scenes[S].frames.length;draw()},500)};
+['cPts','cZero','cLab','cExt'].forEach(i=>$(i).onchange=draw);$('ft').onchange=list;
+$('home').onclick=()=>{OX=OY=0;R=30;draw()};
+cv.addEventListener('wheel',ev=>{ev.preventDefault();R=Math.max(8,Math.min(55,R*(ev.deltaY>0?1.15:0.87)));draw()},{passive:false});
+cv.onclick=ev=>{const r=cv.getBoundingClientRect(),px=(ev.clientX-r.left)*W/r.width,py=(ev.clientY-r.top)*W/r.height;let best=null,bd=20;
+ for(const t of D.scenes[S].frames[F].tr){const[a,b]=tp(t[0],t[1]),d=Math.hypot(a-px,b-py);if(d<bd){bd=d;best=t[6]}}sel=best;draw()};
+load();
+</script></body></html>
