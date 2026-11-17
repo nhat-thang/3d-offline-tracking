@@ -11,12 +11,16 @@ URL=https://motional-nuscenes.s3.ap-northeast-1.amazonaws.com/public/v1.0
 mkdir -p $OUT/.done
 for i in 01 02 03 04 05 06 07 08 09 10; do
   [ -f $OUT/.done/$i ] && { echo "goi $i: da xong, bo qua"; continue; }
-  echo "goi $i: dang tai va giai nen ($(date +%H:%M))"
-  # tar báo "Not found in archive" cho file thuộc gói khác: bình thường, ghi vào log
-  if curl -sfL --retry 5 "$URL/v1.0-trainval${i}_keyframes.tgz" | tar -xz -C $OUT -T $LIST 2>>$LOG; [ ${PIPESTATUS[0]} -eq 0 ]; then
-    touch $OUT/.done/$i
-  else
-    echo "goi $i: LOI tai (xem $LOG), chay lai script de thu lai"
-  fi
+  # Mất mạng giữa chừng: thử lại tối đa 5 lần, mỗi lần chờ 2 phút cho mạng có lại
+  for try in 1 2 3 4 5; do
+    echo "goi $i: dang tai va giai nen, lan thu $try ($(date +%H:%M))"
+    # tar báo "Not found in archive" cho file thuộc gói khác: bình thường, ghi vào log
+    if curl -sfL --retry 5 --retry-all-errors --connect-timeout 30 --speed-limit 1000 --speed-time 120 \
+         "$URL/v1.0-trainval${i}_keyframes.tgz" | tar -xz -C $OUT -T $LIST 2>>$LOG; [ ${PIPESTATUS[0]} -eq 0 ]; then
+      touch $OUT/.done/$i; break
+    fi
+    echo "goi $i: LOI tai lan $try, cho 2 phut roi thu lai"; sleep 120
+  done
+  [ -f $OUT/.done/$i ] || echo "goi $i: van LOI sau 5 lan, chay lai script sau"
   echo "  da co $(ls $OUT/samples/LIDAR_TOP 2>/dev/null | wc -l) / 6019 file"
 done

@@ -19,3 +19,4 @@ __pycache__/
 # File tự sinh sau mỗi lần chạy repro/run_rest.sh
 RESULT_*_vs_paper.md
 logs/
+tools/*.log
