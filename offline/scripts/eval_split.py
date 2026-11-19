@@ -1,5 +1,7 @@
 """Chấm điểm nuScenes tracking (bộ chấm chính thức) trên một phần của tập val.
 Chạy (từ thư mục immortal_repro):  python offline/scripts/eval_split.py <results.json> <dev|test|val> <thư_mục_ra>
+  Thay <dev|test|val> bằng file *_meta.json của dữ liệu refine để chỉ chấm các scene có trong file đó
+  (dùng khi chưa có đủ LiDAR: mọi phiên bản phải chấm trên cùng tập scene).
 Cách làm: lọc results.json chỉ giữ sample của các scene thuộc phần đã chọn, đổi danh sách scene 'val' của devkit
 thành đúng phần đó, rồi gọi TrackingEval như bình thường. Với 'val' kết quả giống hệt chấm đầy đủ 150 scene."""
 import sys, os, json
@@ -8,7 +10,10 @@ import common, ijson
 res_path, part, out = sys.argv[1], sys.argv[2], sys.argv[3]
 os.makedirs(out, exist_ok=True)
 scenes, where = common.scene_index()
-keep = set(scenes) if part == 'val' else set(common.load_split()[part])
+if part.endswith('.json'):
+    keep = set(json.load(open(part))['scenes']); part = os.path.basename(part).replace('_meta.json', '')
+else:
+    keep = set(scenes) if part == 'val' else set(common.load_split()[part])
 import nuscenes.utils.splits as S
 _orig = S.create_splits_scenes
 def patched(verbose=False):
@@ -32,7 +37,8 @@ from nuscenes.eval.tracking.evaluate import TrackingEval
 ev = TrackingEval(config=config_factory('tracking_nips_2019'), result_path=filtered, eval_set='val', output_dir=out,
                   nusc_version='v1.0-trainval', nusc_dataroot=common.DATAROOT, verbose=False)
 m = ev.main(render_curves=False)
-os.remove(filtered)
+try: os.remove(filtered)
+except OSError: pass
 keys = ['amota', 'amotp', 'mota', 'recall', 'ids', 'frag', 'fp', 'fn', 'tid', 'lgd']
 line = ' | '.join(f'{m[k]:.3f}' if k in ('amota', 'amotp', 'mota', 'recall', 'tid', 'lgd') else f'{m[k]:.0f}' for k in keys)
 open(os.path.join(out, 'summary_row.md'), 'w').write(f'| {os.path.basename(os.path.dirname(os.path.abspath(res_path)))} ({part}) | {line} |\n')

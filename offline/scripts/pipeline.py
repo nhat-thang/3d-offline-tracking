@@ -14,7 +14,7 @@ from scipy.optimize import linear_sum_assignment
 sys.path.insert(0, os.path.dirname(__file__))
 import common
 
-STEPS = {'R1': ['a'], 'R2': ['a', 'b'], 'R3': ['a', 'd']}
+STEPS = {'R1': ['a'], 'R2': ['a', 'b'], 'R3': ['a', 'd'], 'E': ['b']}  # E: chỉ kéo dài track (giống bước extension của CTRL), dùng làm đối chứng cho refine
 RANGE = {'car': 50, 'truck': 50, 'bus': 50, 'trailer': 50, 'pedestrian': 40, 'motorcycle': 40, 'bicycle': 40}
 
 
