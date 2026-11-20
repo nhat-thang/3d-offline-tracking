@@ -4,10 +4,11 @@
 # Cấu hình nào chưa có file dự đoán thì bỏ qua; cấu hình đã chấm thì không chấm lại.
 cd "$(dirname "$0")/../.."
 S=${SEED:-s0}
-if [ ! -x /tmp/imm_env/bin/python ]; then
-  echo "tao moi truong (vai phut)..."; ENV=/tmp/imm_env bash repro/setup_env.sh > /tmp/setup.log 2>&1 && /tmp/imm_env/bin/pip install -q ijson >> /tmp/setup.log 2>&1 || { tail /tmp/setup.log; exit 1; }
+E=${ENV_DIR:-/tmp/imm_env}   # tools/*.bat gắn một Docker volume vào đây để chỉ cài môi trường một lần
+if [ ! -x $E/bin/python ]; then
+  echo "tao moi truong (vai phut, chi lan dau)..."; ENV=$E bash repro/setup_env.sh > /tmp/setup.log 2>&1 && $E/bin/pip install -q ijson >> /tmp/setup.log 2>&1 || { tail /tmp/setup.log; exit 1; }
 fi
-. /tmp/imm_env/bin/activate
+. $E/bin/activate
 mkdir -p offline/results/eval
 ev() {   # ev <ten> <results.json>
   local o=offline/results/eval/${1}_test
@@ -23,15 +24,16 @@ ref() {  # ref <cau hinh> <src cho apply> <ten ra> [--no_box]
   ev $3 offline/results/$3/results_test.json
 }
 ev B0 baseline_B0/results.json
-ref B0 B0 B0_refscore_$S --no_box
+[ -z "$ONLY_FULL" ] && ref B0 B0 B0_refscore_$S --no_box   # ONLY_FULL=1: bỏ cấu hình chỉ chấm score (khi chạy thêm seed)
 ref B0 B0 B0_ref_$S
 ev Ours offline/results/Ours/results_test.json
+ev Ours_v2 offline/results/Ours_v2/results_test.json   # Ours + luật lật hướng vote (offline/notes/02)
 ref Ours offline/results/Ours/results_test.json Ours_ref_$S
 ev CTRLext offline/results/CTRLext/results_test.json
 ref CTRLext offline/results/CTRLext/results_test.json CTRLext_ref_$S
 python - <<'PY'
 import json, os, glob
-rows = ['B0', 'B0_refscore_' + os.environ.get('SEED', 's0'), 'B0_ref_' + os.environ.get('SEED', 's0'), 'Ours', 'Ours_ref_' + os.environ.get('SEED', 's0'),
+rows = ['B0', 'B0_refscore_' + os.environ.get('SEED', 's0'), 'B0_ref_' + os.environ.get('SEED', 's0'), 'Ours', 'Ours_v2', 'Ours_ref_' + os.environ.get('SEED', 's0'),
         'CTRLext', 'CTRLext_ref_' + os.environ.get('SEED', 's0')]
 out = ['| Cau hinh (75 scene test) | AMOTA | AMOTP | MOTA | Recall | IDS | FRAG | FP | FN | Hop box (lat huong, sai so kich thuoc) |', '|---|---|---|---|---|---|---|---|---|---|']
 for r in rows:
@@ -43,5 +45,5 @@ for r in rows:
     if os.path.exists(bf):
         l = [x for x in open(bf) if 'box ghep' in x]; bt = l[0].split('box ghep')[1].strip() if l else ''
     out.append(f"| {r} | {m['amota']:.3f} | {m['amotp']:.3f} | {m['mota']:.3f} | {m['recall']:.3f} | {m['ids']:.0f} | {m['frag']:.0f} | {m['fp']:.0f} | {m['fn']:.0f} | {bt} |")
-open('offline/results/refine/summary_test.md', 'w').write('\n'.join(out) + '\n'); print('\n'.join(out))
+open('offline/results/refine/summary_test_' + os.environ.get('SEED', 's0') + '.md', 'w').write('\n'.join(out) + '\n'); print('\n'.join(out))
 PY

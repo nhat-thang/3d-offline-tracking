@@ -31,6 +31,8 @@ python offline/scripts/measure_tracking.py offline/results/R3/results_dev.json d
 | `scripts/link_precision.py` | Tỉ lệ nối track đúng, đối chiếu GT |
 | `scripts/analyze_ext.py` | Tỉ lệ box kéo dài trùng vật thật |
 | `scripts/check_yaw_size.py` | Sai số hướng và kích thước box so với GT |
+| `scripts/diag_smooth.py` | Đo bước làm mượt sửa đúng/làm sai: lật hướng (tách xe lùi), rẽ gắt, kích thước trailer/bus |
+| `scripts/metric_experiments.py` | Thí nghiệm bộ chấm phạt từng kiểu lỗi (xem docs/tracking_metrics.md, mục 7) |
 | `scripts/lidar_check_mini.py` | Đếm điểm LiDAR trong box kéo dài (2 scene có LiDAR trong nuScenes mini) |
 | `scripts/find_cases_mini.py` | Tìm thời điểm minh họa trong 2 scene mini |
 
@@ -40,6 +42,7 @@ python offline/scripts/measure_tracking.py offline/results/R3/results_dev.json d
 |---|---|
 | `scripts/viz_b0.py`, `scripts/viz_ctrl_cases.py` | Trang HTML nhìn từ trên xuống, có điểm LiDAR và GT |
 | `scripts/render_video.py`, `scripts/render_ctrl_cases.py` | Video 6 camera + LiDAR nhìn từ trên xuống (cần nuScenes mini) |
+| `scripts/render_compare.py` | Video so sánh hai cấu hình trên cùng scene, màu theo ID track, GT màu xám |
 
 ## Khác
 
@@ -47,3 +50,4 @@ python offline/scripts/measure_tracking.py offline/results/R3/results_dev.json d
 - `download_val_lidar.sh`, `val_lidar_files.txt`: tải point cloud LiDAR keyframe của tập val từ bản công khai của nuScenes.
 - `notes/`: ghi chú phân tích.
 - Kết quả ghi vào `offline/results/` (không đưa lên repo).
+- `refine/`: refine rút gọn trên LiDAR keyframe (tạo dữ liệu, model, train, áp kết quả, chấm điểm), xem `docs/refine.md`.

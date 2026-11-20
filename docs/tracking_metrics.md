@@ -151,3 +151,31 @@ Kết quả khớp với số bộ chấm in ra (0.6881). Trong 18.187 lỗi b�
 | Tổng thể | **AMOTA**, MOTA | toàn bộ bảng 4.2 |
 
 Mọi phiên bản được chấm bằng cùng bộ chấm, cùng file detection (`detections/cp_val_noflip.json`) và cùng 150 scene. Kết quả ghi vào bảng theo dõi trong `RESULTS.md`.
+
+## 7. Thí nghiệm: bộ chấm phạt từng kiểu lỗi thế nào
+
+Lấy chính box GT (sau bộ lọc của bộ chấm) của 2 scene dev làm kết quả "hoàn hảo", mỗi lần làm hỏng theo đúng một kiểu rồi chấm bằng devkit (`offline/scripts/metric_experiments.py`, `offline/scripts/run_metric_experiments.sh`).
+
+| Thí nghiệm | Cách làm hỏng | AMOTA | AMOTP (m) | MOTA | Recall | IDS | FRAG | FP | FN |
+|---|---|---|---|---|---|---|---|---|---|
+| Hoàn hảo | GT, score 0,9 | 1.000 | 0.000 | 1.000 | 1.000 | 0 | 0 | 0 | 0 |
+| Lệch 0,5 m | Dời tâm 0,5 m theo hướng ngẫu nhiên | 0.995 | 0.484 | 1.000 | 1.000 | 0 | 0 | 0 | 2 |
+| Lệch 1,5 m | Như trên, 1,5 m | 0.962 | 1.448 | 0.973 | 0.979 | 4 | 3 | 5 | 11 |
+| Lệch 1,99 m | Như trên, 1,99 m | 0.977 | 1.934 | 0.989 | 0.993 | 8 | 2 | 2 | 22 |
+| Lệch 2,5 m | Như trên, 2,5 m | 0.002 | 1.946 | 0.003 | 0.132 | 35 | 72 | 981 | 1.095 |
+| Ngược hướng, sai kích thước | Quay 180°, kích thước ×1,5 | 1.000 | 0.000 | 1.000 | 1.000 | 0 | 0 | 0 | 0 |
+| Đổi ID giữa track | Nửa sau mỗi track (≥ 4 box) mang ID mới | 0.925 | 0.150 | 0.947 | 0.992 | 47 | 4 | 0 | 14 |
+| Bỏ 1 trong 2 frame | Xóa box ở frame lẻ (giữ box cuối) | 0.984 | 0.087 | 0.992 | 0.996 | 0 | 9 | 8 | 11 |
+| Kéo dài 2 frame | Thêm 2 box ở mỗi đầu track theo vận tốc | 0.927 | 0.000 | 0.923 | 1.000 | 0 | 0 | 80 | 0 |
+| Track giả, score thấp | Mỗi track thêm một bản sao lệch 5 m, score 0,3 | 1.000 | 0.000 | 1.000 | 1.000 | 0 | 0 | 0 | 0 |
+| Track giả, score cao | Như trên, score 0,95 | 0.054 | 0.038 | 0.066 | 1.000 | 0 | 0 | 1.244 | 0 |
+| Mất 40% track | Bỏ ngẫu nhiên 40% số track | 0.555 | 0.890 | 0.576 | 0.576 | 0 | 2 | 0 | 410 |
+
+Kết luận:
+
+1. **Chỉ tâm box được chấm, với ngưỡng cứng 2 m.** Lệch 1,99 m vẫn gần như đủ điểm, lệch 2,5 m mất gần hết. Hướng và kích thước không ảnh hưởng (quay 180° vẫn 1,000), nên cần đo riêng nếu quan tâm chất lượng box.
+2. **Bỏ frame trong track gần như không bị phạt**, vì bộ chấm tự nội suy tuyến tính khoảng trống.
+3. **Box thêm ở ngoài hai đầu track bị tính FP**: ngoài đời vật không có GT (vật không còn điểm LiDAR hoặc ra khỏi tầm). Đây là lý do bước kéo dài hai chiều làm giảm AMOTA.
+4. **Thứ tự score quan trọng hơn số lượng box sai**: cùng số track giả, score thấp hơn track thật thì không mất điểm (bị cắt ở các ngưỡng recall thấp), score cao thì AMOTA gần 0.
+5. **Bỏ sót vật bị phạt theo tỉ lệ**: mất 40% track làm AMOTA còn 0,555, vì các mức recall trên 0,6 không đạt được và bị tính 0.
+6. **Đổi ID bị phạt vừa phải** (0,925 với 47 lần đổi ID trên 2 scene).

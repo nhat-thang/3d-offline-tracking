@@ -31,6 +31,12 @@ def real_boxes(seq):
 
 
 # ---------------- (a) nối track hai chiều ----------------
+def axis_of(entries):
+    """Trục thân xe (yaw theo mod pi) của một nhóm box: trung bình nửa góc của 2*yaw."""
+    y = np.array([Quaternion(b['rotation']).yaw_pitch_roll[0] for _, _, b in entries])
+    return 0.5 * np.arctan2(np.sin(2 * y).sum(), np.cos(2 * y).sum())
+
+
 def reassociate(tracks, p):
     """Mỗi track có một 'đuôi' (box thật cuối) và một 'đầu' (box thật đầu).
     Cặp (A, B) là ứng viên nếu: cùng lớp, B bắt đầu sau khi A kết thúc, khoảng trống <= gap giây.
@@ -51,7 +57,8 @@ def reassociate(tracks, p):
             head, tail = r[:p.k], r[-p.k:]
             info[tid] = dict(cls=cls, vol=vol, score=np.mean([b['tracking_score'] for _, _, b in r]),
                              f0=r[0][0], t0=r[0][1], x0=xy(r[0]), v0=velocity([(t, xy(e)) for e in head for t in [e[1]]]),
-                             f1=r[-1][0], t1=r[-1][1], x1=xy(r[-1]), v1=velocity([(t, xy(e)) for e in tail for t in [e[1]]]))
+                             f1=r[-1][0], t1=r[-1][1], x1=xy(r[-1]), v1=velocity([(t, xy(e)) for e in tail for t in [e[1]]]),
+                             a0=axis_of(head), a1=axis_of(tail))
         for cls in common.CLASSES:
             if cls in p.skip_cls.split(','): continue
             ids = [t for t, i in info.items() if i['cls'] == cls and i['score'] >= p.min_link_score]
@@ -68,6 +75,12 @@ def reassociate(tracks, p):
                     dt = B['t0'] - A['t1']
                     if dt > p.gap: continue
                     if not (0.5 <= B['vol'] / max(A['vol'], 1e-6) <= 2.0): continue
+                    # cổng hướng (tùy chọn): trục thân xe ở đuôi A và đầu B phải gần nhau (so theo trục, bỏ qua lật 180 độ)
+                    mdy = getattr(p, 'max_dyaw', 0.0)
+                    if mdy > 0 and cls != 'pedestrian' and abs(wrap(2 * (A['a1'] - B['a0']))) / 2 > np.radians(mdy): continue
+                    # cổng tốc độ (tùy chọn): tốc độ cuối A và đầu B không chênh quá max_dv m/s
+                    mdv = getattr(p, 'max_dv', 0.0)
+                    if mdv > 0 and abs(np.linalg.norm(A['v1']) - np.linalg.norm(B['v0'])) > mdv: continue
                     ef = np.linalg.norm(A['x1'] + A['v1'] * dt - B['x0'])
                     eb = np.linalg.norm(B['x0'] - B['v0'] * dt - A['x1'])
                     c = min(ef, eb)  # lấy chiều đoán tốt hơn: track ngắn (1-2 box) ước lượng vận tốc kém
@@ -176,12 +189,20 @@ def smooth(tracks, p):
                 lo, hi = max(0, i - 3), min(n, i + 4)
                 axis = 0.5 * np.arctan2(np.sin(2 * yaw[lo:hi]).sum(), np.cos(2 * yaw[lo:hi]).sum())
                 disp = X[hi - 1, :2] - X[lo, :2]; dur = t[hi - 1] - t[lo]
-                if dur > 0 and np.linalg.norm(disp) / dur > 1.0:
-                    sign = 1 if np.cos(np.arctan2(disp[1], disp[0]) - axis) >= 0 else -1
+                mode = getattr(p, 'flip_mode', 'motion')
+                if mode == 'vote':
+                    # chỉ lật box i khi nó là thiểu số rõ ràng: >= flip_vote các box còn lại trong cửa sổ ngược hướng với nó.
+                    # Không dựa vào chiều chuyển động (xe lùi có chiều đi ngược đầu xe -> luật cũ lật nhầm).
+                    others = np.delete(yaw[lo:hi], i - lo)
+                    if len(others) and (np.cos(others - yaw[i]) < 0).mean() >= getattr(p, 'flip_vote', 0.7):
+                        newyaw[i] = wrap(yaw[i] + np.pi); st['flips'] += 1
                 else:
-                    sign = 1 if (np.cos(yaw[lo:hi] - axis) >= 0).sum() * 2 >= (hi - lo) else -1
-                ref = axis if sign > 0 else wrap(axis + np.pi)
-                if abs(wrap(yaw[i] - ref)) > np.pi / 2: newyaw[i] = wrap(yaw[i] + np.pi); st['flips'] += 1
+                    if dur > 0 and np.linalg.norm(disp) / dur > 1.0:
+                        sign = 1 if np.cos(np.arctan2(disp[1], disp[0]) - axis) >= 0 else -1
+                    else:
+                        sign = 1 if (np.cos(yaw[lo:hi] - axis) >= 0).sum() * 2 >= (hi - lo) else -1
+                    ref = axis if sign > 0 else wrap(axis + np.pi)
+                    if abs(wrap(yaw[i] - ref)) > np.pi / 2: newyaw[i] = wrap(yaw[i] + np.pi); st['flips'] += 1
                 lo, hi = max(0, i - p.sw), min(n, i + p.sw + 1)
                 tt = t[lo:hi] - t[i]
                 if hi - lo >= p.sdeg + 2:
@@ -210,6 +231,10 @@ if __name__ == '__main__':
     ap.add_argument('--ext', type=float, default=1.0); ap.add_argument('--ext_tail', type=float, default=1.0); ap.add_argument('--ext_decay', type=float, default=1.0)
     ap.add_argument('--sw', type=int, default=2); ap.add_argument('--sdeg', type=int, default=1)
     ap.add_argument('--ssig', type=float, default=1.0)
+    ap.add_argument('--flip_mode', default='motion', help="motion: luật cũ (theo chiều chuyển động); vote: chỉ lật box thiểu số trong cửa sổ")
+    ap.add_argument('--flip_vote', type=float, default=0.7)
+    ap.add_argument('--max_dyaw', type=float, default=0.0, help='nối track: lệch trục hướng tối đa giữa đuôi A và đầu B (độ), 0 = không xét')
+    ap.add_argument('--max_dv', type=float, default=0.0, help='nối track: chênh tốc độ tối đa (m/s), 0 = không xét')
     p = ap.parse_args()
     tag = p.tag or p.version
     from nuscenes import NuScenes

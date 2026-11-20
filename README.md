@@ -12,7 +12,16 @@ Tái lập ImmortalTracker trên nuScenes val (150 scene), detection CenterPoint
 | MOTA (%) | 60.1 | 60.0 |
 | IDS | 385 | 383 |
 
-Kết quả các bước offline: [`RESULTS.md`](RESULTS.md).
+Xử lý offline trên track, 75 scene test (nửa của val, không dùng để chỉnh tham số):
+
+| Cấu hình | AMOTA | AMOTP (m) | FRAG | IDS | Box lệch hướng > 90° |
+|---|---|---|---|---|---|
+| B0 (ImmortalTracker) | 0.685 | 0.546 | 246 | 214 | 7,44% |
+| B0 + refine rút gọn (train trên 75 scene dev) | 0.691 | 0.553 | 250 | 167 | 8,19% |
+| Nối track + làm mượt (không train) | 0.691 | 0.515 | 168 | 183 | 6,44% |
+| Kéo dài hai chiều + refine (các bước kiểu CTRL) | 0.679 | 0.542 | 225 | 159 | 7,80% |
+
+Bảng đầy đủ và phân tích: [`RESULTS.md`](RESULTS.md).
 
 ## Cấu trúc thư mục
 
@@ -99,7 +108,9 @@ python repro/compare_paper.py $OUT/metrics_summary.json
 | [`docs/tracking_metrics.md`](docs/tracking_metrics.md) | Metric tracking của nuScenes: định nghĩa, công thức, cách bộ chấm tính |
 | [`docs/giai_thich_pipeline.md`](docs/giai_thich_pipeline.md) | Pipeline 3D auto-labeling offline: detection, tracking, refine |
 | [`docs/so_sanh_ctrl.md`](docs/so_sanh_ctrl.md) | So sánh các bước của CTRL với cách làm trong repo |
+| [`docs/refine.md`](docs/refine.md) | Refine rút gọn trên LiDAR keyframe: dữ liệu, model, train, kết quả |
 | [`RESULTS.md`](RESULTS.md) | Kết quả tái lập và các thử nghiệm offline |
+| [`offline/notes/`](offline/notes/) | Ghi chép quá trình: phân tích lỗi B0, sửa luật lật hướng |
 
 ## Tham khảo
 

@@ -47,7 +47,7 @@ AMOTA theo class:
 | B1 | 0.730 | 0.512 | 0.634 | 0.762 | 188 | 188 | 6.802 | 9.450 | 0.333 | 0.487 |
 | B2 | 0.630 | 0.483 | 0.520 | 0.667 | 127 | 160 | 7.357 | 13.173 | 0.281 | 0.453 |
 
-R1, R1b, R3: đang chạy bộ chấm.
+R1, R1b, R3 chưa chấm devkit trên dev. Cấu hình gộp R1b + R3 (Ours) được chấm trên 75 scene test, xem mục 6.
 
 - B1 không đổi AMOTA vì bộ chấm đã tự nội suy tuyến tính.
 - B2 giảm 10 điểm AMOTA: box kéo dài khi không có refine phần lớn là FP. B2 vượt giới hạn 500 box mỗi sample ở một số frame; 305 box score thấp nhất bị bỏ theo luật nuScenes.
@@ -106,3 +106,60 @@ Kiểm tra trên 2 scene val có LiDAR (scene-0103, scene-0916, `offline/scripts
 | R3 | 0.289 | 6,5% | 0,195 |
 
 Hướng và kích thước đo bằng `offline/scripts/check_yaw_size.py` (box score ≥ 0,3 ghép GT trong 2 m, khoảng 42.400 box). Bộ chấm nuScenes chỉ dùng tâm box, không chấm hướng và kích thước; hai cột sau có ý nghĩa cho chất lượng nhãn auto-labeling.
+
+### 5.5 Sửa luật lật hướng trong bước làm mượt (Ours_v2)
+
+Đo riêng bước làm mượt trên dev (`offline/scripts/diag_smooth.py`: ghép box với GT, so cùng box trước và sau làm mượt):
+
+| | Box lật hướng trước | Sau (luật cũ) | Sau (luật `vote`) | Sửa đúng / làm sai (luật cũ) | Sửa đúng / làm sai (`vote`) |
+|---|---|---|---|---|---|
+| Xe chạy bình thường (44.700 box) | 8,67% | 7,08% | **6,78%** | 1.509 / 798 | 1.114 / **270** |
+| Xe đang lùi (283 box) | 25,8% | 27,6% | **22,6%** | 18 / 23 | 14 / **5** |
+
+- Luật cũ lấy chiều chuyển động làm hướng đầu xe khi xe đi nhanh hơn 1 m/s, nên lật nhầm xe đang lùi. Luật `vote` (`--flip_mode vote --flip_vote 0.7`) chỉ lật box ngược hướng với ít nhất 70% số box còn lại trong cửa sổ ±3.
+- Cùng phép đo cho thấy làm mượt không gây hại ở các tình huống dự đoán là khó: xe rẽ gắt (> 20°/s) sai số tâm 0,454 → 0,357 m; kích thước trailer 0,229 → 0,218, bus 0,187 → 0,174 (1 − IoU). Hai luật này giữ nguyên.
+- Thử thêm cổng hướng (`--max_dyaw`) và cổng tốc độ (`--max_dv`) cho bước nối track: trên dev chỉ khoảng 25 cặp nối kiểm tra được với GT, hai cổng loại bỏ cặp đúng nhiều hơn cặp sai, nên để tắt mặc định.
+
+Ours_v2 = Ours với `--flip_mode vote`. Trên 75 scene test, tỉ lệ box lệch hướng > 90° (theo lớp, `check_yaw_size.py`):
+
+| | car | truck | trailer | bus | motorcycle | bicycle | pedestrian |
+|---|---|---|---|---|---|---|---|
+| Ours | 4,66% | 4,11% | 22,0% | 0,90% | 3,44% | 14,1% | 9,88% |
+| Ours_v2 | **4,06%** | **2,81%** | **18,9%** | 1,13% | 4,40% | 14,2% | 9,83% |
+
+Tính chung khoảng 5,9% (Ours: 6,44%). AMOTA của Ours_v2: chưa chấm.
+
+## 6. Kết quả trên 75 scene test
+
+Chấm một lần cho mọi cấu hình bằng nuscenes-devkit 1.1.11 (`offline/refine/run_eval_all.sh`). Refine: seed 0.
+
+| Cấu hình | AMOTA | AMOTP (m) | MOTA | Recall | IDS | FRAG | FP | FN | Lệch hướng > 90° | 1 − IoU kích thước |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B0 (ImmortalTracker) | 0.685 | 0.546 | 0.590 | 0.744 | 214 | 246 | 8.843 | 8.815 | 7,44% | 0,204 |
+| B0 + refine, chỉ đổi score | 0.690 | 0.553 | 0.604 | 0.750 | 167 | 251 | 7.852 | 9.485 | 8,19% | 0,204 |
+| B0 + refine | 0.691 | 0.553 | 0.604 | 0.750 | 167 | 250 | 7.851 | 9.485 | 8,19% | 0,204 |
+| **Ours** (nối track R1b + làm mượt R3) | **0.691** | **0.515** | 0.596 | 0.747 | 183 | **168** | 8.598 | 8.916 | **6,44%** | 0,193 |
+| Ours + refine | 0.691 | 0.536 | 0.604 | 0.738 | 147 | 170 | 7.393 | 9.856 | 6,46% | 0,191 |
+| CTRLext (kéo dài hai chiều) | 0.651 | 0.531 | 0.538 | 0.687 | 199 | 209 | 8.711 | 10.324 | 7,45% | 0,204 |
+| CTRLext + refine (các bước kiểu CTRL) | 0.679 | 0.542 | 0.590 | 0.718 | 159 | 225 | 7.836 | 10.261 | 7,80% | 0,201 |
+
+AMOTA theo lớp:
+
+| | car | pedestrian | truck | bus | trailer | motorcycle | bicycle |
+|---|---|---|---|---|---|---|---|
+| B0 | 0.827 | 0.759 | 0.677 | 0.873 | 0.495 | 0.670 | 0.492 |
+| B0 + refine | 0.827 | 0.763 | 0.674 | 0.877 | 0.486 | 0.692 | 0.514 |
+| Ours | 0.830 | 0.757 | 0.683 | 0.878 | 0.508 | 0.687 | 0.493 |
+| Ours + refine | 0.821 | 0.760 | 0.678 | 0.881 | 0.482 | 0.712 | 0.506 |
+| CTRLext | 0.815 | 0.742 | 0.672 | 0.864 | 0.490 | 0.578 | 0.397 |
+| CTRLext + refine | 0.814 | 0.751 | 0.670 | 0.869 | 0.479 | 0.680 | 0.488 |
+
+Nhận xét:
+
+- Ours đạt cùng AMOTA với B0 + refine mà không cần train; box chính xác hơn (AMOTP −0,031 m, lệch hướng 7,44% → 6,44%, kích thước 0,204 → 0,193), số track bị vỡ (FRAG) giảm 32%, IDS giảm 14%.
+- Chênh AMOTA +0,006 là nhỏ và chưa kiểm định thống kê trên 75 scene.
+- Refine tăng AMOTA nhờ chấm lại score (chỉ đổi score đã được 0,690); phần chỉnh box không cải thiện, AMOTP và lệch hướng còn tăng nhẹ. Áp lên Ours thì không tăng thêm.
+- Kéo dài hai chiều làm giảm 0,034 AMOTA: ngoài hai đầu track nuScenes không có GT, và box kéo dài score thấp kéo score trung bình cả track xuống, làm recall giảm 0,744 → 0,687. Refine bù lại được 0,028 nhưng vẫn dưới B0.
+- AMOTA tối đa đạt được với recall của CenterPoint là khoảng 0,86, nên các bước sau tracker chỉ thay đổi được ít.
+
+Chi tiết refine: [`docs/refine.md`](docs/refine.md). Thí nghiệm về cách bộ chấm phạt từng kiểu lỗi: [`docs/tracking_metrics.md`](docs/tracking_metrics.md), mục 7.

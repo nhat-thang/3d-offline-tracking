@@ -12,7 +12,7 @@ from nuscenes.eval.common.config import config_factory
 from nuscenes.eval.common.loaders import load_gt, add_center_dist, filter_eval_boxes
 from nuscenes.eval.tracking.data_classes import TrackingBox
 ap = argparse.ArgumentParser(); ap.add_argument('part')
-for k, v in dict(k=3, gap=3.0, d0=1.0, d1=1.0, d0p=0.6, d1p=0.6, skip_cls='', min_link_score=0.0).items(): ap.add_argument('--' + k, type=type(v), default=v)
+for k, v in dict(k=3, gap=3.0, d0=1.0, d1=1.0, d0p=0.6, d1p=0.6, skip_cls='', min_link_score=0.0, max_dyaw=0.0, max_dv=0.0).items(): ap.add_argument('--' + k, type=type(v), default=v)
 p = ap.parse_args()
 nusc = NuScenes(version='v1.0-trainval', dataroot=common.DATAROOT, verbose=False)
 scenes, where = common.scene_index(nusc)
