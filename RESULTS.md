@@ -159,7 +159,35 @@ Nhận xét:
 - Ours đạt cùng AMOTA với B0 + refine mà không cần train; box chính xác hơn (AMOTP −0,031 m, lệch hướng 7,44% → 6,44%, kích thước 0,204 → 0,193), số track bị vỡ (FRAG) giảm 32%, IDS giảm 14%.
 - Chênh AMOTA +0,006 là nhỏ và chưa kiểm định thống kê trên 75 scene.
 - Refine tăng AMOTA nhờ chấm lại score (chỉ đổi score đã được 0,690); phần chỉnh box không cải thiện, AMOTP và lệch hướng còn tăng nhẹ. Áp lên Ours thì không tăng thêm.
-- Kéo dài hai chiều làm giảm 0,034 AMOTA: ngoài hai đầu track nuScenes không có GT, và box kéo dài score thấp kéo score trung bình cả track xuống, làm recall giảm 0,744 → 0,687. Refine bù lại được 0,028 nhưng vẫn dưới B0.
+- Kéo dài hai chiều làm giảm 0,034 AMOTA: box kéo dài mang score của box thật gần nhất (`ext_decay = 1`) nhưng nằm ngoài hai đầu track, nơi nuScenes không có GT, nên thành FP có score cao; ngưỡng cho MOTA tốt nhất bị đẩy lên và recall tại ngưỡng đó giảm 0,744 → 0,687. Refine bù lại được 0,028 nhưng vẫn dưới B0.
 - AMOTA tối đa đạt được với recall của CenterPoint là khoảng 0,86, nên các bước sau tracker chỉ thay đổi được ít.
 
 Chi tiết refine: [`docs/refine.md`](docs/refine.md). Thí nghiệm về cách bộ chấm phạt từng kiểu lỗi: [`docs/tracking_metrics.md`](docs/tracking_metrics.md), mục 7.
+
+## 7. Waymo Open Dataset (vehicle, tập validation)
+
+Chấm theo cách của paper CTRL: metric detection AP/APH, ghép theo IoU 3D ≥ 0,7 (định nghĩa: [`docs/tracking_metrics.md`](docs/tracking_metrics.md), mục 8). Chi tiết và phân tích: [`offline/notes/03_waymo_tai_lap_ctrl.md`](offline/notes/03_waymo_tai_lap_ctrl.md).
+
+### 7.1 Kết quả của tác giả CTRL, 202 chuỗi
+
+| Kết quả | L1 AP / APH | L2 AP / APH | Paper |
+|---|---|---|---|
+| FSD (detector nền) | 82,79 / 82,31 | 75,13 / 74,69 | Table 4: 74,9 / 74,4 |
+| CTRL, Track TTA | 88,47 / 87,48 | 82,28 / 81,31 | Table 1: 82,3 / 81,3 |
+
+### 7.2 Chạy lại CTRL và phương pháp đề xuất, 8 chuỗi
+
+Cùng detection FSD, cùng ImmortalTracker-for-CTRL, cùng các bước kéo dài, refine (checkpoint của tác giả) và xóa box rỗng; phương pháp đề xuất chỉ thêm bước nối track + làm mượt sau tracker, tham số giữ nguyên từ nuScenes (đổi đơn vị sang giây). Paper không báo cáo số trên tập con này.
+
+| Giai đoạn (L2 AP / APH) | CTRL | Đề xuất |
+|---|---|---|
+| Sau tracker | 76,37 / 75,88 | 77,30 / 76,82 |
+| Sau kéo dài | 76,42 / 75,93 | 77,36 / 76,88 |
+| Sau refine, không TTA | 82,63 / 81,92 | 83,38 / 82,74 |
+| Sau xóa box rỗng, không TTA | 83,25 / 82,53 | **84,06 / 83,42** |
+| Sau xóa box rỗng, Track TTA | 84,33 / 83,29 | chưa chạy |
+| Kết quả chính thức của tác giả, Track TTA | 84,51 / 83,46 | |
+
+- CTRL chạy lại thấp hơn kết quả chính thức 0,17 APH L2; so từng box: 98% box ghép được, lệch tâm trung vị 2,5 cm, 98,7% box thuộc đúng track tương ứng.
+- Đề xuất hơn CTRL khoảng 0,8–0,95 APH L2 ở mọi giai đoạn. Bước nối track chỉ nối 3 cặp; phần tăng chủ yếu đến từ làm mượt. So từng box GT sau refine: CTRL sai mà đề xuất đúng 874 box, ngược lại 363 box.
+- Hạn chế: 8/202 chuỗi, chưa kiểm định thống kê, chưa tách đóng góp từng thành phần, chưa chấm metric tracking của Waymo.

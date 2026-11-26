@@ -1,0 +1,12 @@
+# Bo sung cho ctrl_env: cac file proto cua Waymo (tracker va tools/ctrl doc/ghi file .bin) + nvitop de theo doi GPU.
+# Goi waymo-open-dataset khong cai duoc tren Ubuntu 18.04 (wheel manylinux_2_28), nen chi lay cac file *_pb2.py (Python thuan).
+FROM ctrl_env
+RUN pip install --no-cache-dir protobuf==3.20.3 nvitop \
+ && pip download --no-deps --only-binary=:all: --platform manylinux_2_28_x86_64 --python-version 3.10 \
+      waymo-open-dataset-tf-2-12-0==1.6.7 -d /tmp/w \
+ && python -c "import zipfile,glob; z=zipfile.ZipFile(glob.glob('/tmp/w/*.whl')[0]); [z.extract(n,'/opt/conda/lib/python3.8/site-packages') for n in z.namelist() if n.endswith('_pb2.py')]" \
+ && rm -rf /tmp/w && python -c "from waymo_open_dataset.protos import metrics_pb2; from waymo_open_dataset import dataset_pb2, label_pb2; print('proto ok')"
+# matplotlib moi doi numpy>=1.20, nhung mmdet3d/numba can numpy 1.19.5 -> ha matplotlib ve 3.3.4.
+RUN pip install --no-cache-dir matplotlib==3.3.4 \
+ && cd /opt/ImmortalTracker-for-CTRL && python -c "import mot_3d.visualization, mot_3d.utils, matplotlib.pyplot, numpy; print('tracker import ok', numpy.__version__)" \
+ && cd /opt/SST && python -c "import torch, mmcv, mmdet, mmdet3d, torch_scatter; from mmdet3d.apis import single_gpu_test; print('sst import ok', torch.cuda.is_available())"

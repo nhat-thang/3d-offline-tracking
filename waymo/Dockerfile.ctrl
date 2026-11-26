@@ -1,0 +1,17 @@
+# Moi truong chay lai CTRL (SST repo) + ImmortalTracker-for-CTRL tren GPU, theo phien ban tac gia dung:
+# torch 1.8 + CUDA 11.1, mmcv-full 1.3.9, mmdet 2.14, mmseg 0.14.1, spconv 2, torch_scatter, TorchEx.
+FROM pytorch/pytorch:1.8.1-cuda11.1-cudnn8-devel
+ENV TORCH_CUDA_ARCH_LIST="8.6" FORCE_CUDA=1 DEBIAN_FRONTEND=noninteractive
+RUN rm -f /etc/apt/sources.list.d/cuda*.list /etc/apt/sources.list.d/nvidia-ml*.list \
+ && apt-get update && apt-get install -y --no-install-recommends git ninja-build build-essential libgl1 libglib2.0-0 \
+ && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir mmcv-full==1.3.9 -f https://download.openmmlab.com/mmcv/dist/cu111/torch1.8.0/index.html
+RUN pip install --no-cache-dir mmdet==2.14.0 mmsegmentation==0.14.1 spconv-cu111
+# ghim ban co wheel dung san cho torch 1.8 + cu111 (ban moi nhat chi co ma nguon, phai bien dich va bi loi)
+RUN pip install --no-cache-dir --only-binary=torch-scatter torch-scatter==2.0.8 -f https://data.pyg.org/whl/torch-1.8.0+cu111.html
+RUN pip install --no-cache-dir "numpy==1.19.5" "numba==0.53.1" "networkx>=2.2,<2.3" nuscenes-devkit==1.1.9 lyft_dataset_sdk \
+      plyfile scikit-image tensorboard "trimesh>=2.35.39,<2.35.40" ipdb filterpy==1.4.5 Shapely==1.8.0 PyYAML tqdm pandas==1.1.5
+RUN git clone --depth 1 https://github.com/Abyssaledge/TorchEx /opt/TorchEx && cd /opt/TorchEx && pip install -v . 
+RUN git clone --depth 1 https://github.com/tusen-ai/SST /opt/SST && cd /opt/SST && pip install -v -e .
+RUN git clone --depth 1 https://github.com/Abyssaledge/ImmortalTracker-for-CTRL /opt/ImmortalTracker-for-CTRL
+WORKDIR /opt/SST
