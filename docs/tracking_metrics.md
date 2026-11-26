@@ -263,4 +263,4 @@ Hệ quả:
 
 ### 8.6 Metric tracking của Waymo
 
-Waymo cũng có bộ chấm tracking riêng (dùng cho bảng xếp hạng tracking và trong paper ImmortalTracker): **MOTA, MOTP, mismatch (đổi ID), FP, miss** theo từng lớp và mức khó, ghép theo IoU 3D như detection. Paper CTRL không báo cáo các metric này. Repo hiện chưa chấm metric tracking trên Waymo.
+Waymo cũng có bộ chấm tracking riêng (dùng cho bảng xếp hạng tracking và trong paper ImmortalTracker): **MOTA, MOTP, mismatch (đổi ID), FP, miss** theo từng lớp và mức khó, ghép theo IoU 3D như detection. Paper CTRL không báo cáo các metric này. Repo chấm bằng `waymo/eval_track.py` (op `tracking_metrics` của gói `waymo-open-dataset`); kết quả ở [`offline/notes/03_waymo_tai_lap_ctrl.md`](../offline/notes/03_waymo_tai_lap_ctrl.md). Trên 8 chuỗi, số lần đổi ID chỉ khoảng 0,03–0,05% số box GT: lỗi tracking trên Waymo chủ yếu là bỏ sót và báo nhầm ở ngưỡng IoU 0,7.

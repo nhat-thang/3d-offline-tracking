@@ -31,6 +31,7 @@ Dữ liệu Waymo Open Dataset dùng theo giấy phép phi thương mại; dữ 
 | 11 | `tools/waymo_11_cham_subset.bat` → `eval_subset.sh` | Chấm mọi kết quả trên các chuỗi trong `subset8.txt` |
 | 12 | `tools/waymo_12_so_box.bat` → `compare_boxes.py` | So từng box của bản chạy lại với kết quả chính thức |
 | 13 | `tools/waymo_13_ban_de_xuat.bat` → `run_ours_refine.sh`, `eval_ours.sh` | Bước C: đưa kết quả của phương pháp đề xuất qua kéo dài, cắt điểm, refine CTRL, xóa box rỗng; chấm cả hai bản ở từng giai đoạn |
+| 14 | `tools/waymo_14_cham_tracking.bat` → `eval_track.sh`, `eval_track.py` | Chấm metric tracking của Waymo (MOTA, MOTP, bỏ sót, đổi ID, báo nhầm) cho CTRL và phương pháp đề xuất |
 
 `ours.bin` dùng ở bước 13 được tạo bằng `ours_waymo.py` (cần numpy, scipy, pandas và file proto Waymo):
 

@@ -190,4 +190,5 @@ Cùng detection FSD, cùng ImmortalTracker-for-CTRL, cùng các bước kéo dà
 
 - CTRL chạy lại thấp hơn kết quả chính thức 0,17 APH L2; so từng box: 98% box ghép được, lệch tâm trung vị 2,5 cm, 98,7% box thuộc đúng track tương ứng.
 - Đề xuất hơn CTRL khoảng 0,8–0,95 APH L2 ở mọi giai đoạn. Bước nối track chỉ nối 3 cặp; phần tăng chủ yếu đến từ làm mượt. So từng box GT sau refine: CTRL sai mà đề xuất đúng 874 box, ngược lại 363 box.
-- Hạn chế: 8/202 chuỗi, chưa kiểm định thống kê, chưa tách đóng góp từng thành phần, chưa chấm metric tracking của Waymo.
+- Metric tracking của Waymo (LEVEL_2, `waymo/eval_track.py`): MOTA sau tracker 65,71 (CTRL) và 66,56 (đề xuất); sau refine không TTA + xóa box rỗng 74,76 và **75,92**; CTRL Track TTA 76,73. Số lần đổi ID chỉ 13–20 trên 44.497 box GT ở mọi cấu hình; phần chênh đến từ bỏ sót và báo nhầm.
+- Hạn chế: 8/202 chuỗi, chưa kiểm định thống kê, chưa tách đóng góp từng thành phần.

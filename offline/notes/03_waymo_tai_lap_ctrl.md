@@ -136,4 +136,21 @@ Vehicle L2 AP / APH trên 8 chuỗi:
 - So từng box GT với CTRL sau refine: CTRL sai mà đề xuất đúng 874 box; CTRL đúng mà đề xuất sai 363 box. Phần sửa được nhiều nhất thuộc nhóm "refine cho box sai" (405) và "box đầu vào ngược hướng" (228). Nhiều ca sửa được là box có IoU sát ngưỡng 0,7.
 - So với CTRL có Track TTA trên cùng 8 chuỗi (83,29 khi chạy lại, 83,46 kết quả chính thức), bản đề xuất không TTA đạt mức tương đương.
 
-Hạn chế: mới 8 chuỗi, chưa kiểm định thống kê; chưa tách đóng góp của từng thành phần làm mượt; chưa có bước gộp track trùng; chưa chấm metric tracking của Waymo (MOTA, IDS).
+### Metric tracking của Waymo (8 chuỗi)
+
+`waymo/eval_track.py` dùng op chấm tracking chính thức của gói `waymo-open-dataset` (ghép Hungarian theo IoU 3D ≥ 0,7, quét ngưỡng score, lấy ngưỡng cho MOTA cao nhất). Op trả cùng một giá trị cho LEVEL_1 và LEVEL_2 trong lần chạy này, nên chỉ ghi LEVEL_2 (tính trên 44.497 box GT có điểm LiDAR); số đếm là tỉ lệ × số GT.
+
+| Kết quả (vehicle, LEVEL_2) | MOTA ↑ | MOTP ↓ (1 − IoU) | Bỏ sót | Đổi ID | Báo nhầm |
+|---|---|---|---|---|---|
+| CTRL, sau tracker | 65,71 | 0,1555 | 11.110 | 20 | 4.126 |
+| Đề xuất, sau tracker | 66,56 | 0,1518 | 10.924 | 16 | 3.940 |
+| CTRL, refine không TTA + xóa box rỗng | 74,76 | 0,1396 | 7.765 | 13 | 3.454 |
+| Đề xuất, refine không TTA + xóa box rỗng | **75,92** | 0,1405 | 7.406 | 13 | 3.295 |
+| CTRL, refine Track TTA + xóa box rỗng | 76,73 | 0,1399 | 7.181 | 13 | 3.162 |
+| CTRL, kết quả chính thức của tác giả | 76,79 | 0,1401 | 7.110 | 124 | 3.092 |
+
+- Số lần đổi ID rất nhỏ ở mọi cấu hình (13–20 trên 44.497 box GT, khoảng 0,03–0,05%): trên Waymo, lỗi tracking chủ yếu là bỏ sót và báo nhầm ở ngưỡng IoU 0,7, không phải đổi ID.
+- Đề xuất hơn CTRL 0,85 MOTA sau tracker và 1,16 MOTA sau refine, chủ yếu nhờ giảm bỏ sót và báo nhầm (box đủ chính xác để vượt ngưỡng IoU); số đổi ID gần như không đổi, phù hợp với việc bước nối track chỉ nối 3 cặp.
+- Kết quả chính thức của tác giả có 124 lần đổi ID, nhiều hơn hẳn bản chạy lại (13); nguyên nhân chưa rõ (có thể khác cách gán ID khi tạo file kết quả).
+
+Hạn chế: mới 8 chuỗi, chưa kiểm định thống kê; chưa tách đóng góp của từng thành phần làm mượt; chưa có bước gộp track trùng.
