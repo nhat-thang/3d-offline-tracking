@@ -4,7 +4,7 @@ Lưu ý về đầu ra của ImmortalTracker gốc trên nuScenes (evaluation/nu
 chỉ xuất box ở frame track được ghép với detection, cộng thêm ĐÚNG 1 frame dự đoán ngay sau khi mất detection
 (score = score cũ x 0.01). Khi bị che lâu hơn, track vẫn sống bên trong tracker nhưng KHÔNG xuất box,
 nên trong results.json track có khoảng trống. Detection CenterPoint có score >= 0.1, vì vậy box có score < 0.05
-là box dự đoán (không có detection)."""
+là predicted box (không có detection)."""
 import os, json, collections
 import numpy as np, ijson
 
@@ -13,7 +13,7 @@ B0 = os.path.join(ROOT, 'baseline_B0', 'results.json')
 DATAROOT = os.path.join(ROOT, 'data', 'nuscenes_valslim')
 SPLIT = os.path.join(ROOT, 'offline', 'split_dev_test.json')
 CLASSES = ['bicycle', 'bus', 'car', 'motorcycle', 'pedestrian', 'trailer', 'truck']
-PRED_SCORE = 0.05  # box có score dưới mức này là box dự đoán, không có detection
+PRED_SCORE = 0.05  # box có score dưới mức này là predicted box, không có detection
 
 
 def scene_index(nusc=None):

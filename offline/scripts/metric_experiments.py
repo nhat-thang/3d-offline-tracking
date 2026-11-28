@@ -1,5 +1,5 @@
-"""Task 2: thí nghiệm cách bộ chấm nuScenes phạt từng kiểu lỗi.
-Lấy chính box GT (đã qua bộ lọc của bộ chấm) làm kết quả "hoàn hảo", rồi làm hỏng theo một kiểu duy nhất mỗi lần,
+"""Task 2: thí nghiệm cách evaluator nuScenes penalize từng kiểu lỗi.
+Lấy chính box GT (đã qua bộ lọc của evaluator) làm kết quả "hoàn hảo", rồi làm hỏng theo một kiểu duy nhất mỗi lần,
 ghi results.json và chấm bằng devkit trên cùng tập scene. Mỗi thí nghiệm chỉ khác bản hoàn hảo đúng một thứ.
 Chạy:  python offline/scripts/metric_experiments.py make <scene_meta.json>     # tạo các file results
        python offline/scripts/eval_split.py offline/results/metric_exp/<ten>/results_dev.json <scene_meta.json> offline/results/metric_exp/eval_<ten>"""

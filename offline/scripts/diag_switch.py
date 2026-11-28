@@ -1,6 +1,6 @@
-"""Đo 5 nhiệm vụ của tracking theo góc nhìn của bước refine: KHÔNG lọc ngưỡng score, KHÔNG nội suy
-(giữ nguyên track như tracker xuất ra). Lọc GT giống bộ chấm nuScenes (tầm 40/50 m, bỏ box không có điểm LiDAR/radar,
-bỏ xe đạp trong bãi); box dự đoán cũng lọc theo tầm. Ghép theo khoảng cách tâm <= 2 m, giữ cặp ghép cũ nếu còn hợp lệ.
+"""Đo 5 nhiệm vụ của tracking theo góc nhìn của bước refine: KHÔNG lọc threshold score, KHÔNG interpolation
+(giữ nguyên track như tracker xuất ra). Lọc GT giống evaluator nuScenes (tầm 40/50 m, bỏ box không có điểm LiDAR/radar,
+bỏ xe đạp trong bãi); predicted box cũng lọc theo tầm. Ghép theo khoảng cách tâm <= 2 m, giữ cặp ghép cũ nếu còn hợp lệ.
 Chạy (từ thư mục immortal_repro):  python offline/scripts/measure_tracking.py <results.json> <dev|test|val> [tên]
 Đầu ra: offline/results/measure/<tên>_<phần>.json và in một dòng bảng."""
 import sys, os, json, collections

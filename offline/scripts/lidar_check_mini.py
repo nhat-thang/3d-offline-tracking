@@ -1,5 +1,5 @@
 """Thử ý tưởng 'kiểm tra box đoán bằng điểm LiDAR' trên 2 scene val có sẵn LiDAR (scene-0103, scene-0916, lấy từ nuscenes_mini).
-Sinh box kéo dài thả lỏng (như R2_all), đếm số điểm LiDAR trong mỗi box, so tỉ lệ trùng GT theo số điểm."""
+Sinh box extension thả lỏng (như R2_all), đếm số điểm LiDAR trong mỗi box, so tỉ lệ trùng GT theo số điểm."""
 import sys, os, collections, argparse
 import numpy as np
 from pyquaternion import Quaternion
@@ -32,7 +32,7 @@ pipeline.ADDED.clear()
 pipeline.extend(tracks, p, scenes, where, ego)
 cfg = config_factory('tracking_nips_2019')
 gt = filter_eval_boxes(nusc, add_center_dist(nusc, load_gt(nusc, 'val', TrackingBox, verbose=False)), cfg.class_range, verbose=False)
-# box đầy đủ (kích thước, hướng) của box kéo dài: lấy từ track
+# box đầy đủ (kích thước, hướng) của box extension: lấy từ track
 full = {}
 for sc in SC:
     for tid, seq in tracks[sc].items():
@@ -48,7 +48,7 @@ for a in pipeline.ADDED:
     g = [np.array(x.translation[:2]) for x in gt.boxes.get(a['tok'], []) if x.tracking_name == a['cls']]
     hit = bool(g) and min(np.linalg.norm(a['x'] - y) for y in g) <= 2.0
     rows.append((npts(a['tok'], b), hit, a['cls']))
-# đối chứng: box thật (có detection) của track tin cậy
+# đối chứng: real box (có detection) của track tin cậy
 real = []
 for sc in SC:
     for tid, seq in tracks[sc].items():

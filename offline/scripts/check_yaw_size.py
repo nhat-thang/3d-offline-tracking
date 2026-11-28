@@ -1,5 +1,5 @@
-"""Kiểm tra hướng và kích thước box so với GT (bộ chấm nuScenes không đo 2 thứ này).
-Mỗi box thật (score >= 0.05) ghép với GT cùng lớp gần nhất trong 2 m; đo tỉ lệ lệch hướng > 90° và sai số kích thước (1 - IoU thể tích căn giữa).
+"""Kiểm tra hướng và kích thước box so với GT (evaluator nuScenes không đo 2 thứ này).
+Mỗi real box (score >= 0.05) ghép với GT cùng lớp gần nhất trong 2 m; đo tỉ lệ heading error > 90° và sai số kích thước (1 - IoU thể tích căn giữa).
 Chạy: python offline/scripts/check_yaw_size.py <results.json> dev"""
 import sys, os, collections
 import numpy as np

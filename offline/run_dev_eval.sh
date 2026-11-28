@@ -1,5 +1,5 @@
 #!/bin/bash
-# Chấm điểm nuScenes (bộ chấm chính thức) cho B0, B1, B2 trên 75 scene dev, chạy song song 3 tiến trình.
+# Chấm điểm nuScenes (evaluator chính thức) cho B0, B1, B2 trên 75 scene dev, chạy song song 3 tiến trình.
 # Dùng trong Docker:  cd /repro && source ~/imm_env/bin/activate && bash offline/run_dev_eval.sh
 set -e
 cd "$(dirname "$0")/.."

@@ -1,7 +1,7 @@
 """Bước 7a (phần ghi kết quả, cần nuscenes-devkit, không cần PyTorch): áp kết quả model lên track rồi ghi results.json.
   - Chỉnh box: tâm += độ lệch đoán (đổi từ hệ box ra toàn cục), kích thước *= exp(dlog), hướng += dyaw.
   - Chấm lại score: mọi box của track nhận score = xác suất track thật do model đoán
-    (bộ chấm nuScenes dùng score trung bình của cả track, nên score theo track là thứ quyết định).
+    (evaluator nuScenes dùng score trung bình của cả track, nên score theo track là thứ quyết định).
   - Box nằm ngoài tầm chấm (không có trong dữ liệu) giữ nguyên hình học, nhưng vẫn nhận score mới của track.
 Chỉ ghi các scene có trong file dữ liệu, để mọi phiên bản được chấm trên cùng tập scene.
 Chạy: python offline/refine/apply.py B0 test --data offline/results/refine/data/B0_test.npz \

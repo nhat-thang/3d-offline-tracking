@@ -11,10 +11,10 @@
 | Script | Việc |
 |---|---|
 | `scripts/common.py` | Hàm dùng chung: đọc/ghi `results.json` theo track, chia dev/test |
-| `scripts/baselines.py` | B1 (nội suy tuyến tính), B2 (kéo dài hai chiều kiểu CTRL) |
-| `scripts/pipeline.py` | Các bước offline cộng dồn: nối track hai chiều, kéo dài có điều kiện, làm mượt track |
+| `scripts/baselines.py` | B1 (linear interpolation), B2 (kéo dài hai chiều kiểu CTRL) |
+| `scripts/pipeline.py` | Các bước offline cộng dồn: track linking hai chiều, kéo dài có điều kiện, smoothing track |
 | `scripts/eval_split.py` | Chấm điểm nuScenes trên dev hoặc test |
-| `scripts/measure_tracking.py` | Đo không lọc ngưỡng: recall, bỏ sót đầu/giữa/cuối track, đổi ID, box trùng, sai số tâm |
+| `scripts/measure_tracking.py` | Đo không lọc threshold: recall, miss đầu/giữa/cuối track, ID switch, box trùng, sai số tâm |
 
 ```bash
 python offline/scripts/pipeline.py R3 dev            # tạo offline/results/R3/results_dev.json
@@ -26,14 +26,14 @@ python offline/scripts/measure_tracking.py offline/results/R3/results_dev.json d
 
 | Script | Việc |
 |---|---|
-| `scripts/analyze_b0.py` | Phân tích lỗi của B0 ở ngưỡng bộ chấm chọn |
-| `scripts/diag_switch.py` | Phân loại nguyên nhân đổi ID |
-| `scripts/link_precision.py` | Tỉ lệ nối track đúng, đối chiếu GT |
-| `scripts/analyze_ext.py` | Tỉ lệ box kéo dài trùng vật thật |
+| `scripts/analyze_b0.py` | Phân tích lỗi của B0 ở threshold evaluator chọn |
+| `scripts/diag_switch.py` | Phân loại nguyên nhân ID switch |
+| `scripts/link_precision.py` | Tỉ lệ track linking đúng, đối chiếu GT |
+| `scripts/analyze_ext.py` | Tỉ lệ box extension trùng vật thật |
 | `scripts/check_yaw_size.py` | Sai số hướng và kích thước box so với GT |
-| `scripts/diag_smooth.py` | Đo bước làm mượt sửa đúng/làm sai: lật hướng (tách xe lùi), rẽ gắt, kích thước trailer/bus |
-| `scripts/metric_experiments.py` | Thí nghiệm bộ chấm phạt từng kiểu lỗi (xem docs/tracking_metrics.md, mục 7) |
-| `scripts/lidar_check_mini.py` | Đếm điểm LiDAR trong box kéo dài (2 scene có LiDAR trong nuScenes mini) |
+| `scripts/diag_smooth.py` | Đo bước smoothing sửa đúng/làm sai: heading flip (tách xe lùi), rẽ gắt, kích thước trailer/bus |
+| `scripts/metric_experiments.py` | Thí nghiệm evaluator penalize từng kiểu lỗi (xem docs/tracking_metrics.md, mục 7) |
+| `scripts/lidar_check_mini.py` | Đếm điểm LiDAR trong box extension (2 scene có LiDAR trong nuScenes mini) |
 | `scripts/find_cases_mini.py` | Tìm thời điểm minh họa trong 2 scene mini |
 
 ## Trực quan hóa

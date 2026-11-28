@@ -12,7 +12,7 @@ Bổ sung: AMOTP 0.525 · Recall 0.745 · MOTAR 0.804 · TP 82.381 · FP 15.065 
 
 - `results.json` (không có trong repo): kết quả tracking, định dạng submission của nuScenes, là đầu vào cho `offline/`
 - `metrics_summary.json`: toàn bộ metric, có theo từng class
-- `eval_log.txt`: log bộ chấm
+- `eval_log.txt`: log evaluator
 - `detection_md5.txt`: md5 của file detection dùng (`detections/cp_val_noflip.json`)
 - `ImmortalTracker_COMMIT.txt`: commit repo gốc
 

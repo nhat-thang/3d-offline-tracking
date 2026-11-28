@@ -21,8 +21,8 @@ vị trí khớp với chuyển động → nối lại thành một ID.
 ```
 ID:     1  1  1  1  ·  1  1  1  1  ·
 ```
-Ba nhiệm vụ: (a) nối track bị cắt (đã thực hiện), gộp track trùng, tách track nhảy sang vật khác.
-Rủi ro: nối nhầm hai vật khác nhau → cần đo tỉ lệ nối đúng trên dữ liệu có GT.
+Ba nhiệm vụ: (a) track linking bị cắt (đã thực hiện), gộp track trùng, tách track nhảy sang vật khác.
+Rủi ro: link nhầm hai vật khác nhau → cần đo tỉ lệ nối đúng trên dữ liệu có GT.
 
 ## 4. Kéo dài hai chiều (CTRL): "trước và sau đó vật ở đâu?"
 Đoán thêm box ở đầu/cuối track theo vận tốc (□ = box đoán, chưa kiểm chứng).
@@ -36,7 +36,7 @@ giữ và chỉnh box đoán nếu có vật thật, hạ điểm nếu không.
 
 ## Vì sao bước 3 đặt trước refine
 Refine xử lý từng track riêng lẻ. Nếu track bị cắt đôi, refine sửa từng mảnh nhưng kết quả vẫn là hai vật,
-và mỗi mảnh ngắn hơn nên refine có ít thông tin hơn. Paper CTRL ghi nhận vật bị bỏ sót tập trung ở các track ngắn (< 2,5 s, mục 5.3).
+và mỗi mảnh ngắn hơn nên refine có ít thông tin hơn. Paper CTRL ghi nhận vật bị miss tập trung ở các track ngắn (< 2,5 s, mục 5.3).
 
 | Bước | Thành phần | Câu hỏi trả lời |
 |---|---|---|

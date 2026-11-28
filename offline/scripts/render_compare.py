@@ -1,6 +1,6 @@
 """Video so sánh kết quả tracking trên cùng một scene: 6 camera + BEV LiDAR, mỗi cấu hình một video.
 Chỉ có 2 loại box cho dễ nhìn: box của tracker (màu theo ID track, cùng ID thì cùng màu) và GT (xám mảnh).
-Chỉ vẽ track mà bộ chấm giữ lại: score trung bình của track >= ngưỡng cho MOTA tốt nhất của lớp đó
+Chỉ vẽ track mà evaluator giữ lại: score trung bình của track >= threshold cho MOTA tốt nhất của lớp đó
 (lấy từ metrics_details.json của chính cấu hình), nên video khớp với con số trong bảng kết quả.
 Ảnh và LiDAR lấy từ data/nuscenes_mini (scene-0103 thuộc nửa test, scene-0916 thuộc nửa dev).
 Chạy (từ thư mục gốc):

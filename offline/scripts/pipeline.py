@@ -1,9 +1,9 @@
 """Pipeline xử lý offline (hướng của dự án), cộng dồn từng thành phần lên B0:
-  R1 = B0 + (a) nối track hai chiều (bidirectional re-association)
-  R2 = R1 + (b) kéo dài có điều kiện        [đã thử, bỏ: box kéo dài gần như toàn FP, xem RESULTS.md]
-  R3 = R1 + (d) làm mượt cả track (không gồm (b); (c) để sau)
+  R1 = B0 + (a) track linking hai chiều (bidirectional re-association)
+  R2 = R1 + (b) kéo dài có điều kiện        [đã thử, bỏ: box extension gần như toàn FP, xem RESULTS.md]
+  R3 = R1 + (d) smoothing cả track (không gồm (b); (c) để sau)
   R3 = R2 + (c) lấp khoảng trống Hermite      [chưa làm]
-  R4 = R3 + (d) làm mượt cả track             [chưa làm]
+  R4 = R3 + (d) smoothing cả track             [chưa làm]
   R5 = R4 + (e) chấm lại score box đoán       [chưa làm]
 Chạy (từ thư mục immortal_repro):  python offline/scripts/pipeline.py R1 dev [--tag ten] [--gap 3 --d0 1.0 --d1 1.0]
 Đầu ra: offline/results/<tag>/results_<dev|test>.json (hoặc results.json nếu val) + stats_<phần>.json"""
@@ -14,12 +14,12 @@ from scipy.optimize import linear_sum_assignment
 sys.path.insert(0, os.path.dirname(__file__))
 import common
 
-STEPS = {'R1': ['a'], 'R2': ['a', 'b'], 'R3': ['a', 'd'], 'E': ['b']}  # E: chỉ kéo dài track (giống bước extension của CTRL), dùng làm đối chứng cho refine
+STEPS = {'R1': ['a'], 'R2': ['a', 'b'], 'R3': ['a', 'd'], 'E': ['b']}  # E: chỉ track extension (giống bước extension của CTRL), dùng làm đối chứng cho refine
 RANGE = {'car': 50, 'truck': 50, 'bus': 50, 'trailer': 50, 'pedestrian': 40, 'motorcycle': 40, 'bicycle': 40}
 
 
 def velocity(pts):
-    """pts: [(t, xy)] -> vận tốc xy (m/s), bình phương tối thiểu; <2 điểm thì 0."""
+    """pts: [(t, xy)] -> vận tốc xy (m/s), least squares; <2 điểm thì 0."""
     if len(pts) < 2: return np.zeros(2)
     t = np.array([p[0] for p in pts]); x = np.array([p[1] for p in pts])
     t = t - t.mean(); den = (t ** 2).sum()
@@ -30,7 +30,7 @@ def real_boxes(seq):
     return [(f, t, b) for f, t, b in seq if b['tracking_score'] >= common.PRED_SCORE]
 
 
-# ---------------- (a) nối track hai chiều ----------------
+# ---------------- (a) track linking hai chiều ----------------
 def axis_of(entries):
     """Trục thân xe (yaw theo mod pi) của một nhóm box: trung bình nửa góc của 2*yaw."""
     y = np.array([Quaternion(b['rotation']).yaw_pitch_roll[0] for _, _, b in entries])
@@ -38,12 +38,12 @@ def axis_of(entries):
 
 
 def reassociate(tracks, p):
-    """Mỗi track có một 'đuôi' (box thật cuối) và một 'đầu' (box thật đầu).
+    """Mỗi track có một 'đuôi' (real box cuối) và một 'đầu' (real box đầu).
     Cặp (A, B) là ứng viên nếu: cùng lớp, B bắt đầu sau khi A kết thúc, khoảng trống <= gap giây.
-    Chi phí hai chiều: giá trị nhỏ hơn trong hai lỗi
+    Cost hai chiều: giá trị nhỏ hơn trong hai lỗi
       - lỗi đoán xuôi: vị trí cuối A + v_A * dt  so với  vị trí đầu B
       - lỗi đoán ngược: vị trí đầu B - v_B * dt  so với  vị trí cuối A
-    Cổng: chi phí <= d0 + d1 * dt (người đi bộ dùng d0, d1 nhỏ hơn) và tỉ lệ thể tích box trong [1/2, 2].
+    Cổng: cost <= d0 + d1 * dt (người đi bộ dùng d0, d1 nhỏ hơn) và tỉ lệ thể tích box trong [1/2, 2].
     Ghép cặp bằng Hungarian (mỗi đuôi nối tối đa 1 đầu, mỗi đầu tối đa 1 đuôi), rồi gộp thành chuỗi ID."""
     st = collections.Counter()
     for sc, trs in tracks.items():
@@ -75,10 +75,10 @@ def reassociate(tracks, p):
                     dt = B['t0'] - A['t1']
                     if dt > p.gap: continue
                     if not (0.5 <= B['vol'] / max(A['vol'], 1e-6) <= 2.0): continue
-                    # cổng hướng (tùy chọn): trục thân xe ở đuôi A và đầu B phải gần nhau (so theo trục, bỏ qua lật 180 độ)
+                    # heading gate (tùy chọn): trục thân xe ở đuôi A và đầu B phải gần nhau (so theo trục, bỏ qua lật 180 độ)
                     mdy = getattr(p, 'max_dyaw', 0.0)
                     if mdy > 0 and cls != 'pedestrian' and abs(wrap(2 * (A['a1'] - B['a0']))) / 2 > np.radians(mdy): continue
-                    # cổng tốc độ (tùy chọn): tốc độ cuối A và đầu B không chênh quá max_dv m/s
+                    # velocity gate (tùy chọn): tốc độ cuối A và đầu B không chênh quá max_dv m/s
                     mdv = getattr(p, 'max_dv', 0.0)
                     if mdv > 0 and abs(np.linalg.norm(A['v1']) - np.linalg.norm(B['v0'])) > mdv: continue
                     ef = np.linalg.norm(A['x1'] + A['v1'] * dt - B['x0'])
@@ -107,22 +107,22 @@ def reassociate(tracks, p):
     return dict(st)
 
 
-ADDED = []  # ghi lại box kéo dài để phân tích
-LINKS = []  # ghi lại các cặp track được nối (scene, lớp, track trước, track sau, chi phí, khoảng trống s)
+ADDED = []  # ghi lại box extension để phân tích
+LINKS = []  # ghi lại các cặp track được nối (scene, lớp, track trước, track sau, cost, khoảng trống s)
 
 # ---------------- (b) kéo dài có điều kiện ----------------
 def extend(tracks, p, scenes, where, ego):
     """Khác B2 (kéo mọi track): chỉ kéo đầu/đuôi khi đủ tin cậy.
-    Điều kiện track: >= min_len box thật và score trung bình box thật >= min_score (loại track nhiễu).
-    Kéo theo vận tốc không đổi (bình phương tối thiểu trên k box thật ở đầu/đuôi), tối đa ext giây.
+    Điều kiện track: >= min_len real box và score trung bình real box >= min_score (loại track nhiễu).
+    Kéo theo constant velocity (least squares trên k real box ở đầu/đuôi), tối đa ext giây.
     Dừng kéo tại frame đầu tiên mà:
       - vị trí đoán ra ngoài tầm chấm của lớp (40/50 m quanh xe) -> vật đã ra khỏi vùng quan sát;
-      - đã có box thật cùng lớp của track khác trong vòng 2 m -> vật đã được track khác bám, kéo thêm sẽ thành box trùng.
-    Box kéo dài thay cho box dự đoán sẵn có (score < PRED_SCORE) ở cùng frame. Score = score box thật gần nhất x ext_decay."""
+      - đã có real box cùng lớp của track khác trong vòng 2 m -> vật đã được track khác bám, kéo thêm sẽ thành box trùng.
+    Box extension thay cho predicted box sẵn có (score < PRED_SCORE) ở cùng frame. Score = score real box gần nhất x ext_decay."""
     st = collections.Counter()
     for sc, trs in tracks.items():
         toks = scenes[sc]; T = [where[t][2] for t in toks]
-        occ = collections.defaultdict(list)  # (frame, lớp) -> [(tid, xy)] các box thật
+        occ = collections.defaultdict(list)  # (frame, lớp) -> [(tid, xy)] các real box
         for tid, seq in trs.items():
             for f, t, b in seq:
                 if b['tracking_score'] >= common.PRED_SCORE:
@@ -159,19 +159,19 @@ def extend(tracks, p, scenes, where, ego):
     return dict(st)
 
 
-# ---------------- (d) làm mượt cả track ----------------
+# ---------------- (d) smoothing cả track ----------------
 def wrap(a): return (a + np.pi) % (2 * np.pi) - np.pi
 
 
 def smooth(tracks, p):
-    """Với mỗi track có >= 3 box thật:
-    1) Kích thước: vật cứng không đổi kích thước -> mọi box của track dùng trung vị kích thước các box thật.
-    2) Sửa hướng lật 180°: trong cửa sổ ±3 box thật, lấy trục hướng chung (trung bình góc nhân đôi, không phân biệt đầu/đuôi);
+    """Với mỗi track có >= 3 real box:
+    1) Kích thước: vật cứng không đổi kích thước -> mọi box của track dùng median kích thước các real box.
+    2) Sửa hướng lật 180°: trong cửa sổ ±3 real box, lấy trục hướng chung (trung bình góc nhân đôi, không phân biệt đầu/đuôi);
        chiều đúng = chiều di chuyển nếu vật đi nhanh hơn 1 m/s, ngược lại theo đa số các box trong cửa sổ.
        Box nào lệch chiều đúng hơn 90° thì xoay 180°.
-    3) Vị trí: hồi quy đa thức bậc sdeg theo thời gian trên cửa sổ ±sw box thật (trọng số Gauss theo thời gian x score),
-       thay x, y bằng giá trị hồi quy; z thay bằng trung vị cửa sổ. Box dự đoán (score < PRED_SCORE) giữ nguyên vị trí.
-    Lưu ý: bộ chấm nuScenes chỉ dùng tâm box (khoảng cách 2 m, AMOTP), nên chỉ bước 3 ảnh hưởng điểm số;
+    3) Vị trí: hồi quy đa thức bậc sdeg theo thời gian trên cửa sổ ±sw real box (trọng số Gauss theo thời gian x score),
+       thay x, y bằng giá trị hồi quy; z thay bằng median cửa sổ. Predicted box (score < PRED_SCORE) giữ nguyên vị trí.
+    Lưu ý: evaluator nuScenes chỉ dùng tâm box (khoảng cách 2 m, AMOTP), nên chỉ bước 3 ảnh hưởng điểm số;
     bước 1-2 cải thiện chất lượng nhãn cho bài toán auto-labeling."""
     st = collections.Counter()
     for sc, trs in tracks.items():
@@ -233,8 +233,8 @@ if __name__ == '__main__':
     ap.add_argument('--ssig', type=float, default=1.0)
     ap.add_argument('--flip_mode', default='motion', help="motion: luật cũ (theo chiều chuyển động); vote: chỉ lật box thiểu số trong cửa sổ")
     ap.add_argument('--flip_vote', type=float, default=0.7)
-    ap.add_argument('--max_dyaw', type=float, default=0.0, help='nối track: lệch trục hướng tối đa giữa đuôi A và đầu B (độ), 0 = không xét')
-    ap.add_argument('--max_dv', type=float, default=0.0, help='nối track: chênh tốc độ tối đa (m/s), 0 = không xét')
+    ap.add_argument('--max_dyaw', type=float, default=0.0, help='track linking: lệch trục hướng tối đa giữa đuôi A và đầu B (độ), 0 = không xét')
+    ap.add_argument('--max_dv', type=float, default=0.0, help='track linking: chênh tốc độ tối đa (m/s), 0 = không xét')
     p = ap.parse_args()
     tag = p.tag or p.version
     from nuscenes import NuScenes

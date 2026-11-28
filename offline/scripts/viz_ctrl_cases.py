@@ -1,10 +1,10 @@
 """Trang HTML minh họa các trường hợp của khâu tracking kiểu CTRL trên 2 scene val có LiDAR (scene-0103, scene-0916, từ nuscenes_mini).
 Track = B0 (ImmortalTracker gốc) + kéo dài hai chiều kiểu CTRL (như B2), KHÔNG có refine.
 Mỗi box được gắn loại:
-  - box thật (có detection), box đoán của ImmortalTracker khi vật bị che (score < PRED_SCORE);
-  - box kéo dài: 'same' trùng đúng vật của track | 'other' trùng vật khác | 'zeropt' gần vật thật không có điểm LiDAR
-    (bộ chấm nuScenes không tính) | 'empty' chỗ không có vật.
-Sự kiện: giữ ID qua đoạn bị che, đổi ID (vật GT bị đổi track).
+  - real box (có detection), box đoán của ImmortalTracker khi vật bị che (score < PRED_SCORE);
+  - box extension: 'same' trùng đúng vật của track | 'other' trùng vật khác | 'zeropt' gần vật thật không có điểm LiDAR
+    (evaluator nuScenes không tính) | 'empty' chỗ không có vật.
+Sự kiện: giữ ID qua đoạn bị che, ID switch (vật GT bị đổi track).
 Chạy (từ thư mục immortal_repro):  python offline/scripts/viz_ctrl_cases.py
 Đầu ra: offline/results/viz/ctrl_cases_mini.html (tự chứa; dữ liệu nuScenes, chỉ dùng nội bộ)."""
 import sys, os, json, copy, collections
@@ -101,7 +101,7 @@ for sc in SC:
         for a, b in zip(real, real[1:]):
             if b - a > 1 and match.get((tid, a)) and match.get((tid, a)) == match.get((tid, b)):
                 events.append({'type': 'keep', 'f': a + 1, 'f2': b, 'tid': ids[tid], 'txt': f'Track {ids[tid]} giữ nguyên ID qua {b - a - 1} frame bị mất detection (frame {a + 1}–{b - 1})'})
-    # sự kiện: đổi ID
+    # sự kiện: ID switch
     seqs = collections.defaultdict(list)
     for (tid, f), inst in match.items(): seqs[inst].append((f, tid))
     for inst, s in seqs.items():
@@ -114,9 +114,9 @@ for sc in SC:
     for f, fr in enumerate(frames):
         for b in fr['tr']:
             if b[7] in ('same', 'other', 'zeropt', 'empty'): ex_ev[(b[6], b[7])].append(f)
-    lab = {'same': 'đúng vật của track', 'other': 'trùng VẬT KHÁC', 'zeropt': 'gần vật thật không có điểm LiDAR (bộ chấm không tính)', 'empty': 'chỗ không có vật'}
+    lab = {'same': 'đúng vật của track', 'other': 'trùng VẬT KHÁC', 'zeropt': 'gần vật thật không có điểm LiDAR (evaluator không tính)', 'empty': 'chỗ không có vật'}
     for (tid, k), fs in ex_ev.items():
-        events.append({'type': 'ext_' + k, 'f': min(fs), 'tid': tid, 'txt': f'Track {tid}: {len(fs)} box kéo dài {lab[k]} (frame {min(fs)}–{max(fs)})'})
+        events.append({'type': 'ext_' + k, 'f': min(fs), 'tid': tid, 'txt': f'Track {tid}: {len(fs)} box extension {lab[k]} (frame {min(fs)}–{max(fs)})'})
     events.sort(key=lambda e: (e['type'], e['f']))
     out['scenes'].append({'name': sc, 'desc': nusc.get('scene', nusc.field2token('scene', 'name', sc)[0])['description'],
                           'frames': frames, 'events': events, 'ext': dict(cnt), 'ntracks': len(shown), 'ninst': len(inst_ids)})

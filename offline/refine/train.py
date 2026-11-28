@@ -2,11 +2,11 @@
 
 Dữ liệu: các file .npz do make_dataset.py tạo (tập dev). Tách theo scene: cứ 7 scene thì 1 scene làm validation,
 để biết model có học thuộc lòng không. Tập test KHÔNG được dùng ở đây.
-Mỗi epoch in: loss train/val và các chỉ số trên box thật của tập val, so TRƯỚC (box của tracker) và SAU (box đã chỉnh):
-  - sai số tâm (m), tỉ lệ lật hướng > 90 độ, sai số kích thước (trung bình |log tỉ lệ|);
-  - AUC phân biệt box thật/giả và track thật/giả: score gốc của tracker so với score model đoán;
+Mỗi epoch in: loss train/val và các chỉ số trên real box của tập val, so TRƯỚC (box của tracker) và SAU (box đã chỉnh):
+  - sai số tâm (m), tỉ lệ heading flip > 90 độ, sai số kích thước (trung bình |log tỉ lệ|);
+  - AUC phân biệt real box/giả và track thật/giả: score gốc của tracker so với score model đoán;
   - AUC "box-theo-track": gán score của track cho mọi box của nó rồi so với nhãn từng box. Đây là chỉ số gần với
-    AMOTA nhất, vì bộ chấm nuScenes dùng score trung bình của track cho mọi box.
+    AMOTA nhất, vì evaluator nuScenes dùng score trung bình của track cho mọi box.
 Lưu model tốt nhất (loss val thấp nhất) vào offline/results/refine/ckpt/<tên>.pt.
 
 Chạy (từ thư mục gốc):
@@ -45,7 +45,7 @@ def evaluate(model, data, idx, dev, bs):
         PT.append(torch.sigmoid(trk).cpu().numpy()); YT.append(bt['treal'].cpu().numpy())
         st = (bt['feat'][..., 0] * m).sum(1) / m.sum(1)
         ST.append(st.cpu().numpy())
-        # score theo track gán cho từng box (đúng cách bộ chấm dùng): so với nhãn từng box
+        # score theo track gán cho từng box (đúng cách evaluator dùng): so với nhãn từng box
         BT0.append(st[:, None].expand_as(m)[m].cpu().numpy()); BT1.append(torch.sigmoid(trk)[:, None].expand_as(m)[m].cpu().numpy())
     R, Y = np.concatenate(R), np.concatenate(Y)
     yaw_t = np.arctan2(Y[:, 6], Y[:, 7]); yaw_p = np.arctan2(R[:, 6], R[:, 7])

@@ -37,9 +37,9 @@ if X: LAYERS.append(('compare', X, '#1f77b4', '-', p.compare_label))
 
 MO_TA = {
     'khong_co_dau_vao': 'Track đầu vào không có box nào gần xe: lỗi từ detector/tracker, refine không có gì để sửa.',
-    'refine_ha_score': 'Đầu vào có box, nhưng sau refine score thấp hơn ngưỡng hoặc box bị xóa.',
+    'refine_ha_score': 'Đầu vào có box, nhưng sau refine score thấp hơn threshold hoặc box bị xóa.',
     'track_nhay_vat': 'Track đầu vào đi qua hai xe khác nhau; refine gom điểm của cả hai xe.',
-    'khung_keo_dai': 'Box đầu vào ở frame này do bước kéo dài về quá khứ tạo ra.',
+    'khung_keo_dai': 'Box đầu vào ở frame này do bước backward extension tạo ra.',
     'track_trung': 'Cùng frame có hai track đầu vào cho cùng một xe.',
     'track_dut': 'Xe bị chia cho nhiều track đầu vào nối tiếp nhau; track ở frame này phủ dưới 70% đời xe.',
     'lat_huong_dau_vao': 'Box đầu vào đã ngược hướng so với GT.',
@@ -119,7 +119,7 @@ def render(case, fname):
     ax.axhline(0.7, color='k', lw=0.6, ls=':'); ax.set_ylim(0, 1.02); ax.set_xlim(tt[0], tt[-1])
     for e_ in err: ax.axvspan((e_ - t0) / 1e6 - 0.05, (e_ - t0) / 1e6 + 0.05, color='#d62728', alpha=0.08, lw=0)
     for li in pick: ax.axvline(tt[li], color='gray', lw=0.5)
-    ax.set_xlabel('thời gian trong đời xe (s); nền đỏ = frame CTRL sai; đường chấm = ngưỡng IoU 0,7', fontsize=7)
+    ax.set_xlabel('thời gian trong đời xe (s); nền đỏ = frame CTRL sai; đường chấm = threshold IoU 0,7', fontsize=7)
     ax.set_ylabel('IoU với GT', fontsize=7); ax.tick_params(labelsize=6); ax.legend(fontsize=6, loc='lower left', ncol=3)
     fig.suptitle(f"{case['cause']} | cảnh {case['context'][:20]}… | xe GT {g[:8]} | sai {case['n_err']}/{case['n_life']} frame"
                  f" | track CTRL {', '.join('#' + x[-4:] for x in case['ref_tracks'][:4])}", fontsize=8)

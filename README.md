@@ -14,11 +14,11 @@ Tái lập ImmortalTracker trên nuScenes val (150 scene), detection CenterPoint
 
 Xử lý offline trên track, 75 scene test (nửa của val, không dùng để chỉnh tham số):
 
-| Cấu hình | AMOTA | AMOTP (m) | FRAG | IDS | Box lệch hướng > 90° |
+| Cấu hình | AMOTA | AMOTP (m) | FRAG | IDS | Box heading error > 90° |
 |---|---|---|---|---|---|
 | B0 (ImmortalTracker) | 0.685 | 0.546 | 246 | 214 | 7,44% |
 | B0 + refine rút gọn (train trên 75 scene dev) | 0.691 | 0.553 | 250 | 167 | 8,19% |
-| Nối track + làm mượt (không train) | 0.691 | 0.515 | 168 | 183 | 6,44% |
+| Track linking + smoothing (không train) | 0.691 | 0.515 | 168 | 183 | 6,44% |
 | Kéo dài hai chiều + refine (các bước kiểu CTRL) | 0.679 | 0.542 | 225 | 159 | 7,80% |
 
 Waymo, tập validation, lớp vehicle, APH LEVEL_2 (cách paper CTRL chấm):
@@ -28,7 +28,7 @@ Waymo, tập validation, lớp vehicle, APH LEVEL_2 (cách paper CTRL chấm):
 | CTRL, file kết quả của tác giả (Track TTA) | 202 | 81,31 | Paper, Table 1: 81,3 |
 | CTRL chạy lại bằng checkpoint của tác giả (Track TTA) | 8 | 83,29 | Kết quả của tác giả trên cùng 8 chuỗi: 83,46 |
 | CTRL chạy lại (không TTA) | 8 | 82,53 | |
-| Nối track + làm mượt, rồi refine của CTRL (không TTA) | 8 | 83,42 | +0,89 so với CTRL không TTA |
+| Track linking + smoothing, rồi refine của CTRL (không TTA) | 8 | 83,42 | +0,89 so với CTRL không TTA |
 
 Bảng đầy đủ và phân tích: [`RESULTS.md`](RESULTS.md), [`offline/notes/03_waymo_tai_lap_ctrl.md`](offline/notes/03_waymo_tai_lap_ctrl.md).
 
@@ -117,12 +117,12 @@ python repro/compare_paper.py $OUT/metrics_summary.json
 
 | File | Nội dung |
 |---|---|
-| [`docs/tracking_metrics.md`](docs/tracking_metrics.md) | Metric tracking của nuScenes (định nghĩa, công thức, cách bộ chấm tính, thí nghiệm) và metric detection của Waymo (AP/APH) |
+| [`docs/tracking_metrics.md`](docs/tracking_metrics.md) | Metric tracking của nuScenes (định nghĩa, công thức, cách evaluator tính, thí nghiệm) và metric detection của Waymo (AP/APH) |
 | [`docs/giai_thich_pipeline.md`](docs/giai_thich_pipeline.md) | Pipeline 3D auto-labeling offline: detection, tracking, refine |
 | [`docs/so_sanh_ctrl.md`](docs/so_sanh_ctrl.md) | So sánh các bước của CTRL với cách làm trong repo |
 | [`docs/refine.md`](docs/refine.md) | Refine rút gọn trên LiDAR keyframe: dữ liệu, model, train, kết quả |
 | [`RESULTS.md`](RESULTS.md) | Kết quả tái lập và các thử nghiệm offline |
-| [`offline/notes/`](offline/notes/) | Ghi chép quá trình: phân tích lỗi B0, sửa luật lật hướng, tái lập CTRL trên Waymo |
+| [`offline/notes/`](offline/notes/) | Ghi chép quá trình: phân tích lỗi B0, sửa luật heading flip, tái lập CTRL trên Waymo |
 | [`waymo/README.md`](waymo/README.md) | Các bước chạy trên Waymo |
 
 ## Tham khảo
@@ -130,7 +130,7 @@ python repro/compare_paper.py $OUT/metrics_summary.json
 | Paper | Ghi chú |
 |---|---|
 | ImmortalTracker, arXiv 2111.13672 | nuScenes val (Table 5): AMOTA 70.2 / MOTA 60.1 / IDS 385 |
-| CTRL, arXiv 2304.12315 | ImmortalTracker + kéo dài track về quá khứ + mạng refine theo track; chỉ báo cáo trên Waymo (Table 1, vehicle L2 APH: 81,0 không TTA, 81,3 Track TTA) |
+| CTRL, arXiv 2304.12315 | ImmortalTracker + backward track extension + mạng refine theo track; chỉ báo cáo trên Waymo (Table 1, vehicle L2 APH: 81,0 không TTA, 81,3 Track TTA) |
 | Offline Tracking with Object Permanence, arXiv 2310.01288 | Re-ID và hoàn thiện track bằng mạng học |
 
 Dữ liệu nuScenes và Waymo Open Dataset chỉ dùng cho mục đích phi thương mại theo license của từng bộ dữ liệu; repo không chứa dữ liệu, file kết quả hay checkpoint của hai bộ dữ liệu này.

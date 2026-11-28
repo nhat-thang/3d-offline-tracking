@@ -1,6 +1,6 @@
 """Tạo trang HTML xem kết quả tracking theo góc nhìn từ trên xuống (BEV) cho một scene.
 Chạy (từ thư mục immortal_repro):  python offline/scripts/viz_b0.py [tên scene, vd scene-0103] [results.json]
-Mặc định: B0, scene có nhiều vật bị đổi ID nhất trong b0_analysis.json.
+Mặc định: B0, scene có nhiều vật bị ID switch nhất trong b0_analysis.json.
 Đầu ra: offline/results/viz/<tên>_<scene>.html (tự chứa, mở bằng trình duyệt)."""
 import sys, os, json, collections, math
 import numpy as np, ijson

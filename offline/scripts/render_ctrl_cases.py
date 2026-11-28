@@ -1,6 +1,6 @@
 """Video 6 camera + BEV LiDAR cho các trường hợp tracking kiểu CTRL (không refine), 2 scene val trong nuscenes_mini.
 Màu: box có detection = màu theo ID (nét đậm); box đoán của ImmortalTracker khi bị che = màu theo ID (nét mảnh);
-box kéo dài: xanh lá = đúng vật của track, cam = trùng vật khác, tím = vật không có điểm LiDAR, đỏ = chỗ không có vật.
+box extension: xanh lá = đúng vật của track, cam = trùng vật khác, tím = vật không có điểm LiDAR, đỏ = chỗ không có vật.
 GT: xám nhạt; GT không có điểm LiDAR: xám đậm.
 Cần chạy viz_ctrl_cases.py trước (tạo offline/results/viz/ctrl_cases_boxes.json).
 Chạy (từ thư mục immortal_repro):
@@ -18,7 +18,7 @@ import render_video as rv
 
 KIND = {'same': (91, 158, 46), 'other': (30, 138, 224), 'zeropt': (199, 92, 138), 'empty': (69, 69, 214)}
 def tcolor(tid):
-    # màu track trong dải xanh lơ - xanh dương (khác hẳn 4 màu của box kéo dài)
+    # màu track trong dải xanh lơ - xanh dương (khác hẳn 4 màu của box extension)
     h = 85 + (tid * 7) % 35
     c = cv2.cvtColor(np.uint8([[[h, 200, 255 - (tid * 37) % 90]]]), cv2.COLOR_HSV2BGR)[0, 0]
     return tuple(int(x) for x in c)

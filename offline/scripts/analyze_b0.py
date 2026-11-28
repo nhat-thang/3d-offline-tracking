@@ -1,16 +1,16 @@
 """Phân tích quy mô vấn đề trên kết quả mốc B0, trước khi viết module offline.
 
-Đo, cho từng class, tại đúng ngưỡng score mà bộ chấm chọn (ngưỡng cho MOTA cao nhất):
-  1. Bao nhiêu vật thật (GT instance) bị bám bởi >= 2 ID khác nhau  -> việc của bước "nối track".
+Đo, cho từng class, tại đúng threshold score mà evaluator chọn (threshold cho MOTA cao nhất):
+  1. Bao nhiêu vật thật (GT instance) bị bám bởi >= 2 ID khác nhau  -> việc của bước "track linking".
   2. Các khoảng bị mất giữa track (vật thật có mặt nhưng không được ghép), độ dài theo frame
      -> việc của bước "lấp đoạn bị che".
-  3. Bỏ sót ở đầu / cuối đời vật (trước lần ghép đầu tiên, sau lần ghép cuối)
-     -> việc của bước "kéo dài track".
-  4. Vật bị bỏ sót hoàn toàn (không frame nào được ghép).
-Ghép box giống bộ chấm: lọc GT/pred như devkit, ghép theo khoảng cách tâm <= 2 m (Hungarian từng frame).
+  3. Miss ở đầu / cuối đời vật (trước lần ghép đầu tiên, sau lần ghép cuối)
+     -> việc của bước "track extension".
+  4. Vật bị miss hoàn toàn (không frame nào được ghép).
+Ghép box giống evaluator: lọc GT/pred như devkit, ghép theo khoảng cách tâm <= 2 m (Hungarian từng frame).
 
-Lưu ý: bộ chấm thay score từng box bằng score TRUNG BÌNH của cả track trước khi lọc theo ngưỡng,
-nên ở ngưỡng tốt nhất cả track được giữ hoặc bỏ cùng lúc. Script làm y như vậy (dùng create_tracks của devkit).
+Lưu ý: evaluator thay score từng box bằng score TRUNG BÌNH của cả track trước khi lọc theo threshold,
+nên ở threshold tốt nhất cả track được giữ hoặc bỏ cùng lúc. Script làm y như vậy (dùng create_tracks của devkit).
 
 Chạy (từ thư mục immortal_repro):
   python offline/scripts/analyze_b0.py analyze   # ghi offline/results/b0_analysis/
@@ -74,7 +74,7 @@ def step_analyze():
     pred, gt = add_center_dist(nusc, pred), add_center_dist(nusc, gt)
     pred = filter_eval_boxes(nusc, pred, cfg.class_range, verbose=False)
     gt = filter_eval_boxes(nusc, gt, cfg.class_range, verbose=False)
-    # create_tracks gom theo scene + timestamp và nội suy tuyến tính khoảng trống, giống bộ chấm
+    # create_tracks gom theo scene + timestamp và linear interpolation khoảng trống, giống evaluator
     raw_scores = collections.defaultdict(list)
     for tok in pred.sample_tokens:
         sc = nusc.get('sample', tok)['scene_token']
@@ -91,7 +91,7 @@ def step_analyze():
         # theo từng class: chuỗi ghép của mỗi GT instance theo thời gian
         seq = {c: collections.defaultdict(list) for c in CLASSES}  # inst -> [(frame_idx, pred_id or None)]
         last_match = {c: {} for c in CLASSES}  # inst -> pred_id ghép gần nhất
-        cand_seq = {c: collections.defaultdict(list) for c in CLASSES}  # ghép KHÔNG ngưỡng
+        cand_seq = {c: collections.defaultdict(list) for c in CLASSES}  # ghép KHÔNG threshold
         for fi, ts in enumerate(ts_all):
             g_all = gt_tracks[scene][ts]
             p_all = pred_tracks[scene].get(ts, [])
@@ -121,7 +121,7 @@ def step_analyze():
                     last_match[c][g[i].tracking_id] = pid
                 for i, b in enumerate(g):
                     seq[c][b.tracking_id].append((fi, matched.get(i)))
-                # ghép không ngưỡng (đơn giản: Hungarian từng frame) để biết track có tồn tại không
+                # ghép không threshold (đơn giản: Hungarian từng frame) để biết track có tồn tại không
                 pa = [b for b in p_all if b.tracking_name == c]
                 if g and pa:
                     D2 = np.array([[np.linalg.norm(np.array(a.translation[:2]) - np.array(b.translation[:2])) for b in pa] for a in g])
@@ -146,7 +146,7 @@ def step_analyze():
                     if cids:
                         tid = collections.Counter(cids).most_common(1)[0][0]
                         raw = np.array(raw_scores[(scene, tid)])
-                        det = raw[raw >= 0.01]  # box có detection; box dự đoán khi bị che có score x0.01
+                        det = raw[raw >= 0.01]  # box có detection; predicted box khi bị che có score x0.01
                         st['never_but_track_exists'] += 1
                         st['never_fn_recoverable'] += sum(1 for _, pid in cand if pid is not None)
                         if len(det) and det.mean() >= thr[c]:
@@ -161,8 +161,8 @@ def step_analyze():
                     st['id_changes'] += sum(1 for a, b in zip(ids, ids[1:]) if a != b)
                     if len(multi_id_examples[c]) < 20:
                         multi_id_examples[c].append({'scene': scene, 'instance': inst, 'ids_in_order': [i for k, i in enumerate(ids) if k == 0 or ids[k - 1] != i]})
-                st['fn_head'] += hit[0]                 # bỏ sót trước lần ghép đầu tiên
-                st['fn_tail'] += len(s) - 1 - hit[-1]   # bỏ sót sau lần ghép cuối
+                st['fn_head'] += hit[0]                 # miss trước lần ghép đầu tiên
+                st['fn_tail'] += len(s) - 1 - hit[-1]   # miss sau lần ghép cuối
                 # các khoảng trống ở giữa
                 for a, b in zip(hit, hit[1:]):
                     if b - a > 1:

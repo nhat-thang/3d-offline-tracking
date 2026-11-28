@@ -62,7 +62,7 @@ class RefineNet(nn.Module):
         """pts [B, L, P, 4], feat [B, L, F], tcls [B], mask [B, L] (bool)."""
         B, L = mask.shape
         enc = pts.new_zeros(B, L, 256)
-        enc[mask] = self.encode_points(pts[mask], feat[mask])   # chỉ mã hoá box thật, bỏ phần đệm
+        enc[mask] = self.encode_points(pts[mask], feat[mask])   # chỉ mã hoá real box, bỏ phần đệm
         c = self.cls(tcls)[:, None, :].expand(B, L, -1)
         m = mask[..., None].float()
         x = self.fuse(torch.cat([enc, feat, c], -1)) * m
@@ -138,7 +138,7 @@ def losses(out, bt, w_reg=1.0, w_box=1.0, w_trk=1.0):
     reg, box, trk = out
     m = bt['mask']; pos = m & (bt['yreal'] > 0)
     l_box = F.binary_cross_entropy_with_logits(box[m], bt['yreal'][m])
-    # mỗi track nặng theo số box: bộ chấm tính đúng/sai trên từng box, track dài ảnh hưởng nhiều hơn track 1 box
+    # mỗi track nặng theo số box: evaluator tính đúng/sai trên từng box, track dài ảnh hưởng nhiều hơn track 1 box
     nb = m.sum(1).float()
     l_trk = (F.binary_cross_entropy_with_logits(trk, bt['treal'], reduction='none') * nb).sum() / nb.sum()
     if pos.any():

@@ -3,14 +3,14 @@
 Mỗi box của tracker thành một mẫu:
   - Đầu vào: các điểm LiDAR quanh box, đưa về hệ tọa độ của box (tâm box là gốc, trục x dọc theo chiều dài xe),
     lấy ngẫu nhiên NPTS điểm; kèm vài đặc trưng của box (score, kích thước, số điểm, khoảng cách tới xe ...).
-  - Nhãn: ghép box với box GT cùng lớp trong cùng frame (Hungarian theo khoảng cách tâm, tối đa 2 m, giống ngưỡng
-    ghép của bộ chấm nuScenes). Box ghép được: real = 1 và độ lệch tới GT (trong hệ box):
+  - Nhãn: ghép box với box GT cùng lớp trong cùng frame (Hungarian theo khoảng cách tâm, tối đa 2 m, giống threshold
+    ghép của evaluator nuScenes). Box ghép được: real = 1 và độ lệch tới GT (trong hệ box):
         dx, dy, dz, log(w_gt/w), log(l_gt/l), log(h_gt/h), sin(dyaw), cos(dyaw)
     Box không ghép được: real = 0 (box giả hoặc box lệch quá xa).
-  - GT dùng đúng bộ lọc của bộ chấm (load_gt + filter_eval_boxes): bỏ box GT ngoài tầm chấm và box GT không có điểm,
-    nên nhãn khớp với cách bộ chấm tính đúng/sai.
+  - GT dùng đúng bộ lọc của evaluator (load_gt + filter_eval_boxes): bỏ box GT ngoài tầm chấm và box GT không có điểm,
+    nên nhãn khớp với cách evaluator tính đúng/sai.
 Các box được gom theo track (sắp theo thời gian) để model nhìn cả track.
-Box nằm ngoài tầm chấm của lớp (40/50 m) bị bỏ qua: bộ chấm không xét chúng, gắn nhãn 0 sẽ dạy sai model.
+Box nằm ngoài tầm chấm của lớp (40/50 m) bị bỏ qua: evaluator không xét chúng, gắn nhãn 0 sẽ dạy sai model.
 Chỉ dùng scene có đủ file LiDAR của mọi keyframe.
 
 Chạy (từ thư mục gốc, môi trường có nuscenes-devkit, không cần GPU):
@@ -28,8 +28,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 import common
 
 NPTS = 256      # số điểm lấy cho mỗi box
-MARGIN = 1.0    # nới box thêm 1 m mỗi phía khi cắt điểm (box đoán có thể lệch so với vật thật)
-MATCH = 2.0     # ngưỡng ghép box với GT (m), giống bộ chấm nuScenes
+MARGIN = 1.0    # nới box thêm 1 m mỗi phía khi point cropping (box đoán có thể lệch so với vật thật)
+MATCH = 2.0     # threshold ghép box với GT (m), giống evaluator nuScenes
 RANGE = {'car': 50, 'truck': 50, 'bus': 50, 'trailer': 50, 'pedestrian': 40, 'motorcycle': 40, 'bicycle': 40}
 CLS_ID = {c: i for i, c in enumerate(common.CLASSES)}
 BOX_FEATS = ['score', 'is_pred', 'log_w', 'log_l', 'log_h', 'z_rel_ego', 'dist_ego/50', 'log1p_n_in', 'log1p_n_crop',
@@ -58,7 +58,7 @@ def load_points(nusc, tok):
 
 
 def crop(pts, c, size, yaw, rng):
-    """Cắt điểm quanh box, đổi sang hệ box. Trả về (NPTS, 4), số điểm trong vùng cắt, số điểm trong box gốc."""
+    """Point cropping quanh box, đổi sang hệ box. Trả về (NPTS, 4), số điểm trong vùng cắt, số điểm trong box gốc."""
     w, l, h = size
     r = 0.5 * np.hypot(w, l) + MARGIN
     p = pts[(np.abs(pts[:, 0] - c[0]) < r) & (np.abs(pts[:, 1] - c[1]) < r)]   # lọc thô cho nhanh

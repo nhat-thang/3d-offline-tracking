@@ -27,7 +27,7 @@ ev B0 baseline_B0/results.json
 [ -z "$ONLY_FULL" ] && ref B0 B0 B0_refscore_$S --no_box   # ONLY_FULL=1: bỏ cấu hình chỉ chấm score (khi chạy thêm seed)
 ref B0 B0 B0_ref_$S
 ev Ours offline/results/Ours/results_test.json
-ev Ours_v2 offline/results/Ours_v2/results_test.json   # Ours + luật lật hướng vote (offline/notes/02)
+ev Ours_v2 offline/results/Ours_v2/results_test.json   # Ours + luật heading flip vote (offline/notes/02)
 ref Ours offline/results/Ours/results_test.json Ours_ref_$S
 ev CTRLext offline/results/CTRLext/results_test.json
 ref CTRLext offline/results/CTRLext/results_test.json CTRLext_ref_$S

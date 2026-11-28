@@ -4,7 +4,7 @@ Chạy (từ thư mục immortal_repro):
   python offline/scripts/render_video.py frames <scene> [results.json] [--all] [--resume]   # vẽ khung hình (--resume: bỏ qua khung đã có)
   python offline/scripts/render_video.py video  <scene> [results.json]           # ghép MP4 bằng ffmpeg
   python offline/scripts/render_video.py table  [metrics_summary.json]           # ảnh bảng metric theo class
-Mặc định chỉ vẽ track mà bộ chấm giữ lại (score trung bình >= ngưỡng tốt nhất của class); --all vẽ mọi track.
+Mặc định chỉ vẽ track mà evaluator giữ lại (score trung bình >= threshold tốt nhất của class); --all vẽ mọi track.
 Đầu ra: offline/results/video/"""
 import sys, os, json, time, subprocess, collections
 import numpy as np, cv2, ijson

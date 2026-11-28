@@ -1,7 +1,7 @@
 """Tìm thời điểm cụ thể trong 2 scene mini (scene-0103, scene-0916) cho 3 điểm yếu mà các bước đề xuất nhắm tới:
- 1) track bị cắt (vật GT chuyển sang track mới sau khi track cũ dừng) -> bước nối track; kiểm tra R1b có nối được không
- 2) box lật hướng > 90° hoặc kích thước nhảy trong cùng track -> bước làm mượt
- 3) track hiện (qua ngưỡng) mà không bám vật nào / vật thật mà track bị ẩn (dưới ngưỡng) -> bước chấm lại độ tin cậy
+ 1) track bị cắt (vật GT chuyển sang track mới sau khi track cũ dừng) -> bước track linking; kiểm tra R1b có nối được không
+ 2) box heading flip > 90° hoặc kích thước nhảy trong cùng track -> bước smoothing
+ 3) track hiện (qua threshold) mà không bám vật nào / vật thật mà track bị ẩn (dưới threshold) -> bước chấm lại độ tin cậy
 Thời điểm: frame chỉ số 0 = 0,0 s; video chạy 2 frame/s nên giây trong video = giây trong scene; ô "frame k/N" trên video = chỉ số + 1."""
 import sys, os, json, collections, argparse
 import numpy as np
@@ -49,7 +49,7 @@ for sc in SC:
             pp = [(t, b) for t, s in trs.items() for ff, _, b in s if ff == f and b['tracking_name'] == c and b['tracking_score'] >= common.PRED_SCORE]
             if not g or not pp: continue
             D = np.linalg.norm(np.array([x[2] for x in g])[:, None] - np.array([b['translation'][:2] for _, b in pp])[None], axis=2)
-            # ưu tiên track hiện: cộng phạt nhỏ cho track ẩn
+            # ưu tiên track hiện: cộng penalize nhỏ cho track ẩn
             C = np.where(D <= 2, D + np.array([0 if t in shown else 5 for t, _ in pp])[None], 1e6)
             for i, j in zip(*linear_sum_assignment(C)):
                 if C[i, j] < 1e6: m[(pp[j][0], f)] = g[i][0]; gtof[(pp[j][0], f)] = g[i]
@@ -68,7 +68,7 @@ for sc in SC:
                 if first2 > last1:
                     ok = 'R1b NOI DUOC' if (t1, t2) in links else 'R1b khong noi'
                     print(f'   {cls[t1]:10s} track {disp[t1]} -> track {disp[t2]}: frame {f1}->{f2} (giay {f1/2:.1f}->{f2/2:.1f}), {kind}, {ok}')
-    # 2) lật hướng / nhảy kích thước
+    # 2) heading flip / nhảy kích thước
     print('[2] LAT HUONG >90 do so voi GT / KICH THUOC NHAY -> buoc lam muot')
     flips = collections.defaultdict(list); sizej = []
     for t in shown:

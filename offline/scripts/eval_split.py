@@ -1,4 +1,4 @@
-"""Chấm điểm nuScenes tracking (bộ chấm chính thức) trên một phần của tập val.
+"""Chấm điểm nuScenes tracking (evaluator chính thức) trên một phần của tập val.
 Chạy (từ thư mục immortal_repro):  python offline/scripts/eval_split.py <results.json> <dev|test|val> <thư_mục_ra>
   Thay <dev|test|val> bằng file *_meta.json của dữ liệu refine để chỉ chấm các scene có trong file đó
   (dùng khi chưa có đủ LiDAR: mọi phiên bản phải chấm trên cùng tập scene).

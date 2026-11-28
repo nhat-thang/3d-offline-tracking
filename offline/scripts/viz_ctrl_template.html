@@ -16,17 +16,17 @@ label{font-size:13px;color:var(--mut);user-select:none}
 .note{font-size:12.5px;color:var(--mut);margin-top:8px}
 </style></head><body>
 <header><h1>Các trường hợp của khâu tracking kiểu CTRL (không có refine)</h1>
-<p>ImmortalTracker gốc (B0) + kéo dài hai chiều kiểu CTRL, trên 2 scene val có LiDAR. Nhìn từ trên xuống, xe tự lái ở giữa, hướng lên trên. Chỉ hiện track có score trung bình ≥ ngưỡng devkit chọn.</p></header>
+<p>ImmortalTracker gốc (B0) + kéo dài hai chiều kiểu CTRL, trên 2 scene val có LiDAR. Nhìn từ trên xuống, xe tự lái ở giữa, hướng lên trên. Chỉ hiện track có score trung bình ≥ threshold devkit chọn.</p></header>
 <main>
 <section class="card">
  <div class="ctl"><select id="scene"></select><button id="prev">◀</button><button id="play">▶ Chạy</button><button id="next">▶</button>
  <input id="sl" type="range" min="0" value="0"><span id="fl"></span></div>
  <div class="ctl"><label><input type="checkbox" id="cPts" checked> Điểm LiDAR</label><label><input type="checkbox" id="cZero" checked> GT không có điểm LiDAR</label>
- <label><input type="checkbox" id="cLab" checked> Số ID track</label><label><input type="checkbox" id="cExt" checked> Box kéo dài</label><button id="home">Về giữa xe</button><span id="desc" style="font-size:12px;color:var(--mut)"></span></div>
+ <label><input type="checkbox" id="cLab" checked> Số ID track</label><label><input type="checkbox" id="cExt" checked> Box extension</label><button id="home">Về giữa xe</button><span id="desc" style="font-size:12px;color:var(--mut)"></span></div>
  <canvas id="cv" width="900" height="900"></canvas>
  <div class="leg">
   <div><span class="sw" style="background:#cfccc4"></span>GT (vật thật, có điểm LiDAR)</div>
-  <div><span class="sw" style="border:1.5px dotted #9a968c"></span>GT không có điểm LiDAR (bộ chấm bỏ qua)</div>
+  <div><span class="sw" style="border:1.5px dotted #9a968c"></span>GT không có điểm LiDAR (evaluator bỏ qua)</div>
   <div><span class="sw" style="border:2px solid #2a6fdb"></span>Box có detection (màu theo ID)</div>
   <div><span class="sw" style="border:2px dashed #2a6fdb"></span>Box đoán của ImmortalTracker khi bị che</div>
   <div><span class="sw" style="background:#2e9e5b"></span>Kéo dài: đúng vật của track</div>
@@ -36,11 +36,11 @@ label{font-size:13px;color:var(--mut);user-select:none}
  </div>
 </section>
 <aside class="card">
- <div class="k">Tổng hợp box kéo dài (scene này)</div><div class="stat" id="stat"></div>
- <div class="ctl"><span class="k">Sự kiện</span><select id="ft"><option value="">Tất cả</option><option value="keep">Giữ ID khi bị che</option><option value="switch">Đổi ID (ghép đơn giản)</option>
+ <div class="k">Tổng hợp box extension (scene này)</div><div class="stat" id="stat"></div>
+ <div class="ctl"><span class="k">Sự kiện</span><select id="ft"><option value="">Tất cả</option><option value="keep">Giữ ID khi bị che</option><option value="switch">ID switch (ghép đơn giản)</option>
  <option value="ext_same">Kéo dài đúng vật</option><option value="ext_other">Kéo dài trùng vật khác</option><option value="ext_zeropt">Kéo dài: vật không có điểm</option><option value="ext_empty">Kéo dài: chỗ trống</option></select></div>
  <div class="ev" id="ev"></div>
- <p class="note">Bấm một sự kiện để nhảy tới frame và tô đậm track liên quan. Box kéo dài chưa qua refine: trong CTRL, refine sẽ sửa hoặc hạ điểm các box này. "Đổi ID" dùng phép ghép đơn giản (tâm ≤ 2 m, từng frame), có thể nhiều hơn số IDS của bộ chấm nuScenes.</p>
+ <p class="note">Bấm một sự kiện để nhảy tới frame và tô đậm track liên quan. Box extension chưa qua refine: trong CTRL, refine sẽ sửa hoặc hạ điểm các box này. "ID switch" dùng phép ghép đơn giản (tâm ≤ 2 m, từng frame), có thể nhiều hơn số IDS của evaluator nuScenes.</p>
 </aside></main>
 <script>
 const D=__DATA__;
@@ -49,7 +49,7 @@ const EC={keep:'#2a6fdb',switch:'#c43d3d',ext_same:'#2e9e5b',ext_other:'#e08a1e'
 const $=id=>document.getElementById(id),cv=$('cv'),ctx=cv.getContext('2d');
 let S=0,F=0,sel=null,timer=null;
 D.scenes.forEach((s,i)=>$('scene').add(new Option(`${s.name} (${s.frames.length} frame, ${s.ntracks} track)`,i)));
-const col=id=>`hsl(${195+(id*47)%90} 55% ${30+(id*13)%25}%)`; // track: dải xanh dương-tím, để màu loại box kéo dài nổi bật
+const col=id=>`hsl(${195+(id*47)%90} 55% ${30+(id*13)%25}%)`; // track: dải xanh dương-tím, để màu loại box extension nổi bật
 const W=900;let R=30,OX=0,OY=0; // nửa vùng nhìn (m), tâm nhìn (m, hệ xe)
 let SC=W/(2*R);
 const tp=(x,y)=>[W/2-(y-OY)*SC,W/2-(x-OX)*SC];

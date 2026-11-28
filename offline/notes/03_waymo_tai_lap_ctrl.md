@@ -5,7 +5,7 @@
 Paper CTRL (arXiv 2304.12315) chỉ báo cáo kết quả trên Waymo Open Dataset và chấm theo IoU 3D, nên phần tái lập trước đây trên nuScenes chưa đối chiếu trực tiếp được với paper. Phần này làm hai việc trên Waymo, tập validation, lớp vehicle:
 
 1. Kiểm chứng code và kết quả của CTRL bằng kết quả và checkpoint công bố của tác giả. Chỉ chạy inference, không train lại.
-2. Chạy phương pháp đề xuất (nối track + làm mượt cả track) trên cùng dữ liệu và so sánh với CTRL.
+2. Chạy phương pháp đề xuất (track linking + smoothing cả track) trên cùng dữ liệu và so sánh với CTRL.
 
 Metric dùng trong phần này (AP/APH, LEVEL_1/LEVEL_2, IoU 3D) được giải thích ở [`docs/tracking_metrics.md`](../../docs/tracking_metrics.md), mục 8. Cách chạy từng bước: [`waymo/README.md`](../../waymo/README.md).
 
@@ -34,9 +34,9 @@ Metric dùng trong phần này (AP/APH, LEVEL_1/LEVEL_2, IoU 3D) được giải
 | `torch-scatter` biên dịch từ nguồn bị lỗi | Dùng bản dựng sẵn `torch-scatter==2.0.8` cho torch 1.8 + CUDA 11.1 (`waymo/Dockerfile.ctrl`) |
 | matplotlib mới đòi numpy ≥ 1.20, mmdet3d cần numpy 1.19.5 | Hạ matplotlib về 3.3.4 |
 | mmcv 1.3.9 lỗi khi ghi file cấu hình với yapf mới | Sửa cấu hình trong bộ nhớ rồi gọi `tools/test.py` (`waymo/ctrl_test.py`) |
-| Máy có 1 GPU, script của tác giả gán GPU theo số thứ tự tiến trình (0–3), các tiến trình 1–3 lỗi không báo | Chạy tracker, cắt điểm và xóa box rỗng bằng 1 tiến trình |
+| Máy có 1 GPU, script của tác giả gán GPU theo số thứ tự tiến trình (0–3), các tiến trình 1–3 lỗi không báo | Chạy tracker, point cropping và empty-box removal bằng 1 tiến trình |
 | Nhánh 1 tiến trình của `remove_empty.py` truyền sai thứ tự tham số | Sửa trên bản sao khi chạy, không sửa code gốc |
-| Thiếu `context2timestamp.pkl` cho bước kéo dài | Tạo từ dữ liệu đã chuyển đổi (`waymo/make_ctx2ts.py`) |
+| Thiếu `context2timestamp.pkl` cho bước track extension | Tạo từ dữ liệu đã chuyển đổi (`waymo/make_ctx2ts.py`) |
 | Chấm 4,6 triệu box bị tắt do hết RAM | Chấm từng lớp, đọc thẳng vào mảng numpy |
 
 ## Bước A: chấm lại kết quả của tác giả (202 chuỗi)
@@ -46,14 +46,14 @@ Metric dùng trong phần này (AP/APH, LEVEL_1/LEVEL_2, IoU 3D) được giải
 | FSD nền | 82,79 / 82,31 | 75,13 / 74,69 | Table 4, Offline FSD: 74,9 / 74,4 |
 | CTRL (có Track TTA) | 88,47 / 87,48 | 82,28 / 81,31 | Table 1: L1 88,5 / 87,5, L2 82,3 / 81,3 |
 
-- CTRL khớp Table 1, nên bộ chấm và GT dùng ở đây cho cùng kết quả như cách tác giả chấm.
+- CTRL khớp Table 1, nên evaluator và GT dùng ở đây cho cùng kết quả như cách tác giả chấm.
 - FSD cao hơn Table 4 khoảng 0,2–0,3 điểm; file có thể là một cấu hình FSD offline gần nhưng không trùng hẳn cấu hình trong bảng.
 - CTRL tăng khoảng 6,6 điểm APH L2 so với detector nền (74,69 → 81,31).
 - GT: 956.767 box L1, 166.606 box L2, bỏ 121.683 box không có điểm LiDAR.
 
 ## Bước B: tự chạy lại CTRL trên 8 chuỗi
 
-Pipeline: ImmortalTracker-for-CTRL (cấu hình `immortal_for_ctrl_keep10`) trên `fsd_base_vehicle_val.bin` → kéo dài về quá khứ → cắt điểm theo track → refine bằng `ctrl_veh_epoch_24.pth` → xóa box rỗng. GPU RTX 3050 4 GB. Thời gian trên 8 chuỗi: tracker khoảng 2 phút, cắt điểm khoảng 3,5 phút, refine không TTA khoảng 5 phút, có Track TTA khoảng 23 phút, xóa box rỗng khoảng 6 phút.
+Pipeline: ImmortalTracker-for-CTRL (cấu hình `immortal_for_ctrl_keep10`) trên `fsd_base_vehicle_val.bin` → backward extension → point cropping theo track → refine bằng `ctrl_veh_epoch_24.pth` → empty-box removal. GPU RTX 3050 4 GB. Thời gian trên 8 chuỗi: tracker khoảng 2 phút, point cropping khoảng 3,5 phút, refine không TTA khoảng 5 phút, có Track TTA khoảng 23 phút, empty-box removal khoảng 6 phút.
 
 Chấm vehicle trên đúng 8 chuỗi (GT: 37.050 box L1, 7.447 box L2, bỏ 4.198 box không có điểm):
 
@@ -61,28 +61,28 @@ Chấm vehicle trên đúng 8 chuỗi (GT: 37.050 box L1, 7.447 box L2, bỏ 4.1
 |---|---|---|---|
 | FSD nền (file tác giả) | 58.232 | 83,57 / 83,06 | 76,91 / 76,42 |
 | ImmortalTracker-for-CTRL | 98.543 | 82,92 / 82,41 | 76,37 / 75,88 |
-| + kéo dài về quá khứ | 123.943 | 82,96 / 82,45 | 76,42 / 75,93 |
+| + backward extension | 123.943 | 82,96 / 82,45 | 76,42 / 75,93 |
 | + refine CTRL, không TTA | 123.825 | 87,36 / 86,66 | 82,63 / 81,92 |
-| + xóa box rỗng | 93.351 | 88,04 / 87,33 | 83,25 / 82,53 |
+| + empty-box removal | 93.351 | 88,04 / 87,33 | 83,25 / 82,53 |
 | + refine CTRL, Track TTA | 123.825 | 88,35 / 87,25 | 83,71 / 82,65 |
-| + xóa box rỗng | 93.443 | **89,01 / 87,94** | **84,33 / 83,29** |
+| + empty-box removal | 93.443 | **89,01 / 87,94** | **84,33 / 83,29** |
 | CTRL chính thức (`best_val_in_paper.bin`, cùng 8 chuỗi) | 93.589 | 89,15 / 88,06 | 84,51 / 83,46 |
 
-- Bản chạy lại (Track TTA + xóa box rỗng) thấp hơn kết quả chính thức khoảng 0,17–0,18 điểm L2 trên cùng 8 chuỗi; số box gần như bằng nhau.
+- Bản chạy lại (Track TTA + empty-box removal) thấp hơn kết quả chính thức khoảng 0,17–0,18 điểm L2 trên cùng 8 chuỗi; số box gần như bằng nhau.
 - Paper không báo cáo số trên tập con này. Số tuyệt đối trên 8 chuỗi cao hơn số toàn tập trong paper, nên mốc so sánh là kết quả chính thức chấm trên cùng chuỗi, không phải số trong paper.
-- Mức tăng so với FSD nền: +7,4 AP / +6,9 APH L2 (kết quả chính thức: +7,6 / +7,0). Refine là phần tăng chính (khoảng 6 điểm); xóa box rỗng khoảng 0,6 điểm; Track TTA khoảng 0,8 điểm.
+- Mức tăng so với FSD nền: +7,4 AP / +6,9 APH L2 (kết quả chính thức: +7,6 / +7,0). Refine là phần tăng chính (khoảng 6 điểm); empty-box removal khoảng 0,6 điểm; Track TTA khoảng 0,8 điểm.
 
 ### So từng box với kết quả chính thức
 
 `waymo/compare_boxes.py` ghép từng box của bản chạy lại với box của kết quả chính thức trong cùng frame (không dùng GT):
 
-| Chỉ số (bản Track TTA + xóa box rỗng, 8 chuỗi) | Giá trị |
+| Chỉ số (bản Track TTA + empty-box removal, 8 chuỗi) | Giá trị |
 |---|---|
 | Box ghép được | 91.673 / 93.443 (khoảng 98%) |
 | Box chỉ một bên có | 98,5% có score dưới 0,1 |
-| IoU 3D giữa hai box, trung vị | 0,965 (58,5% cặp ≥ 0,95) |
-| Lệch tâm, trung vị | 2,5 cm |
-| Lệch hướng, trung vị | 0,3° |
+| IoU 3D giữa hai box, median | 0,965 (58,5% cặp ≥ 0,95) |
+| Lệch tâm, median | 2,5 cm |
+| Heading error, median | 0,3° |
 | Box thuộc đúng track tương ứng | 98,7% |
 
 - Phần tracking gần như trùng với kết quả chính thức; phần refine cho box lệch vài cm.
@@ -96,18 +96,18 @@ Chấm vehicle trên đúng 8 chuỗi (GT: 37.050 box L1, 7.447 box L2, bỏ 4.1
 
 ## Phân tích lỗi còn lại của CTRL (8 chuỗi)
 
-`waymo/analyze_ctrl_errors.py` ghép box GT có điểm LiDAR với box CTRL sau refine (không TTA, score ≥ 0,3; đúng khi IoU 3D ≥ 0,7 và lệch hướng < 30°), rồi gán mỗi box sai một nguyên nhân theo track đầu vào của refine. Trong 44.497 box GT, CTRL đúng 36.437, sai 8.060:
+`waymo/analyze_ctrl_errors.py` ghép box GT có điểm LiDAR với box CTRL sau refine (không TTA, score ≥ 0,3; đúng khi IoU 3D ≥ 0,7 và heading error < 30°), rồi gán mỗi box sai một nguyên nhân theo track đầu vào của refine. Trong 44.497 box GT, CTRL đúng 36.437, sai 8.060:
 
 | Nguyên nhân | Box sai | Box đầu vào đã đúng (IoU ≥ 0,7) |
 |---|---|---|
 | Refine cho box sai dù track đầu vào sạch và xe đủ điểm | 2.246 | 554 |
-| Refine hạ score dưới ngưỡng hoặc box bị xóa | 2.155 | 153 |
+| Refine hạ score dưới threshold hoặc box bị xóa | 2.155 | 153 |
 | Xe có ≤ 20 điểm LiDAR | 1.002 | 185 |
 | Box đầu vào ngược hướng | 982 | 331 |
 | Hai track đầu vào cho cùng một xe | 804 | 246 |
 | Không có box đầu vào (lỗi từ detector/tracker) | 470 | 0 |
 | Xe bị chia cho nhiều track nối tiếp | 276 | 36 |
-| Frame do bước kéo dài tạo ra | 103 | 6 |
+| Frame do bước track extension tạo ra | 103 | 6 |
 | Track đi qua hai xe khác nhau | 22 | 3 |
 
 - Các nguyên nhân thuộc track đầu vào (ngược hướng, track trùng, track đứt, track nhảy vật) chiếm khoảng 26% số box sai.
@@ -116,12 +116,12 @@ Chấm vehicle trên đúng 8 chuỗi (GT: 37.050 box L1, 7.447 box L2, bỏ 4.1
 
 ## Bước C: phương pháp đề xuất trên Waymo (8 chuỗi)
 
-`waymo/ours_waymo.py` chuyển Ours_v2 (nối track hai chiều + làm mượt cả track với luật lật hướng `vote`) sang Waymo:
+`waymo/ours_waymo.py` chuyển Ours_v2 (track linking hai chiều + smoothing cả track với luật heading flip `vote`) sang Waymo:
 
 - Giữ nguyên giá trị tham số đã chọn trên nuScenes; các tham số tính theo số box được đổi sang giây (2 Hz → 10 Hz). Không chỉnh tham số trên dữ liệu Waymo.
-- Box được đổi sang hệ tọa độ thế giới bằng `poses.pkl` trước khi tính vận tốc và làm mượt, rồi đổi lại.
-- Box thật của tracker được xác định bằng cách so với detection FSD cùng frame (tâm lệch < 0,3 m), vì score FSD thấp vẫn có thể là detection thật.
-- Đầu vào là cùng kết quả ImmortalTracker-for-CTRL mà CTRL dùng; đầu ra đi qua đúng các bước sau tracker của CTRL (kéo dài, cắt điểm, refine bằng checkpoint CTRL không TTA, xóa box rỗng) bằng `waymo/run_ours_refine.sh`. Hai bản chỉ khác nhau ở bước nối track và làm mượt.
+- Box được đổi sang world frame bằng `poses.pkl` trước khi tính vận tốc và smoothing, rồi đổi lại.
+- Real box của tracker được xác định bằng cách so với detection FSD cùng frame (tâm lệch < 0,3 m), vì score FSD thấp vẫn có thể là detection thật.
+- Đầu vào là cùng kết quả ImmortalTracker-for-CTRL mà CTRL dùng; đầu ra đi qua đúng các bước sau tracker của CTRL (kéo dài, point cropping, refine bằng checkpoint CTRL không TTA, empty-box removal) bằng `waymo/run_ours_refine.sh`. Hai bản chỉ khác nhau ở bước track linking và smoothing.
 
 Vehicle L2 AP / APH trên 8 chuỗi:
 
@@ -130,27 +130,27 @@ Vehicle L2 AP / APH trên 8 chuỗi:
 | Sau tracker | 76,37 / 75,88 | 77,30 / 76,82 | +0,94 |
 | Sau kéo dài | 76,42 / 75,93 | 77,36 / 76,88 | +0,95 |
 | Sau refine (không TTA) | 82,63 / 81,92 | 83,38 / 82,74 | +0,82 |
-| Sau xóa box rỗng | 83,25 / 82,53 | 84,06 / 83,42 | +0,89 |
+| Sau empty-box removal | 83,25 / 82,53 | 84,06 / 83,42 | +0,89 |
 
-- Bước nối track chỉ nối được 3 cặp, vì tracker của CTRL giữ track lâu; phần tăng chủ yếu đến từ làm mượt (kích thước chung, sửa lật hướng 1.719 box, làm mượt vị trí).
-- So từng box GT với CTRL sau refine: CTRL sai mà đề xuất đúng 874 box; CTRL đúng mà đề xuất sai 363 box. Phần sửa được nhiều nhất thuộc nhóm "refine cho box sai" (405) và "box đầu vào ngược hướng" (228). Nhiều ca sửa được là box có IoU sát ngưỡng 0,7.
+- Bước track linking chỉ nối được 3 cặp, vì tracker của CTRL giữ track lâu; phần tăng chủ yếu đến từ smoothing (kích thước chung, heading-flip fix 1.719 box, position smoothing).
+- So từng box GT với CTRL sau refine: CTRL sai mà đề xuất đúng 874 box; CTRL đúng mà đề xuất sai 363 box. Phần sửa được nhiều nhất thuộc nhóm "refine cho box sai" (405) và "box đầu vào ngược hướng" (228). Nhiều ca sửa được là box có IoU sát threshold 0,7.
 - So với CTRL có Track TTA trên cùng 8 chuỗi (83,29 khi chạy lại, 83,46 kết quả chính thức), bản đề xuất không TTA đạt mức tương đương.
 
 ### Metric tracking của Waymo (8 chuỗi)
 
-`waymo/eval_track.py` dùng op chấm tracking chính thức của gói `waymo-open-dataset` (ghép Hungarian theo IoU 3D ≥ 0,7, quét ngưỡng score, lấy ngưỡng cho MOTA cao nhất). Op trả cùng một giá trị cho LEVEL_1 và LEVEL_2 trong lần chạy này, nên chỉ ghi LEVEL_2 (tính trên 44.497 box GT có điểm LiDAR); số đếm là tỉ lệ × số GT.
+`waymo/eval_track.py` dùng op chấm tracking chính thức của gói `waymo-open-dataset` (ghép Hungarian theo IoU 3D ≥ 0,7, quét threshold score, lấy threshold cho MOTA cao nhất). Op trả cùng một giá trị cho LEVEL_1 và LEVEL_2 trong lần chạy này, nên chỉ ghi LEVEL_2 (tính trên 44.497 box GT có điểm LiDAR); số đếm là tỉ lệ × số GT.
 
-| Kết quả (vehicle, LEVEL_2) | MOTA ↑ | MOTP ↓ (1 − IoU) | Bỏ sót | Đổi ID | Báo nhầm |
+| Kết quả (vehicle, LEVEL_2) | MOTA ↑ | MOTP ↓ (1 − IoU) | Miss | ID switch | False positive |
 |---|---|---|---|---|---|
 | CTRL, sau tracker | 65,71 | 0,1555 | 11.110 | 20 | 4.126 |
 | Đề xuất, sau tracker | 66,56 | 0,1518 | 10.924 | 16 | 3.940 |
-| CTRL, refine không TTA + xóa box rỗng | 74,76 | 0,1396 | 7.765 | 13 | 3.454 |
-| Đề xuất, refine không TTA + xóa box rỗng | **75,92** | 0,1405 | 7.406 | 13 | 3.295 |
-| CTRL, refine Track TTA + xóa box rỗng | 76,73 | 0,1399 | 7.181 | 13 | 3.162 |
+| CTRL, refine không TTA + empty-box removal | 74,76 | 0,1396 | 7.765 | 13 | 3.454 |
+| Đề xuất, refine không TTA + empty-box removal | **75,92** | 0,1405 | 7.406 | 13 | 3.295 |
+| CTRL, refine Track TTA + empty-box removal | 76,73 | 0,1399 | 7.181 | 13 | 3.162 |
 | CTRL, kết quả chính thức của tác giả | 76,79 | 0,1401 | 7.110 | 124 | 3.092 |
 
-- Số lần đổi ID rất nhỏ ở mọi cấu hình (13–20 trên 44.497 box GT, khoảng 0,03–0,05%): trên Waymo, lỗi tracking chủ yếu là bỏ sót và báo nhầm ở ngưỡng IoU 0,7, không phải đổi ID.
-- Đề xuất hơn CTRL 0,85 MOTA sau tracker và 1,16 MOTA sau refine, chủ yếu nhờ giảm bỏ sót và báo nhầm (box đủ chính xác để vượt ngưỡng IoU); số đổi ID gần như không đổi, phù hợp với việc bước nối track chỉ nối 3 cặp.
-- Kết quả chính thức của tác giả có 124 lần đổi ID, nhiều hơn hẳn bản chạy lại (13); nguyên nhân chưa rõ (có thể khác cách gán ID khi tạo file kết quả).
+- Số lần ID switch rất nhỏ ở mọi cấu hình (13–20 trên 44.497 box GT, khoảng 0,03–0,05%): trên Waymo, lỗi tracking chủ yếu là miss và false positive ở threshold IoU 0,7, không phải ID switch.
+- Đề xuất hơn CTRL 0,85 MOTA sau tracker và 1,16 MOTA sau refine, chủ yếu nhờ giảm miss và false positive (box đủ chính xác để vượt threshold IoU); số ID switch gần như không đổi, phù hợp với việc bước track linking chỉ nối 3 cặp.
+- Kết quả chính thức của tác giả có 124 lần ID switch, nhiều hơn hẳn bản chạy lại (13); nguyên nhân chưa rõ (có thể khác cách gán ID khi tạo file kết quả).
 
-Hạn chế: mới 8 chuỗi, chưa kiểm định thống kê; chưa tách đóng góp của từng thành phần làm mượt; chưa có bước gộp track trùng.
+Hạn chế: mới 8 chuỗi, chưa kiểm định thống kê; chưa tách đóng góp của từng thành phần smoothing; chưa có bước gộp track trùng.

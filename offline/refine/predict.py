@@ -1,5 +1,5 @@
 """Bước 7a (phần cần PyTorch): chạy model đã train lên một file dữ liệu (.npz của make_dataset.py).
-Đầu ra cùng thứ tự với file dữ liệu: reg [N, 8] (độ chỉnh từng box), pbox [N] (xác suất box thật),
+Đầu ra cùng thứ tự với file dữ liệu: reg [N, 8] (độ chỉnh từng box), pbox [N] (xác suất real box),
 ptrk [T] (xác suất track thật). Sau đó dùng apply.py để ghi vào results.json.
 Chạy: python offline/refine/predict.py offline/results/refine/ckpt/B0_s0.pt offline/results/refine/data/B0_test.npz"""
 import os, sys, argparse

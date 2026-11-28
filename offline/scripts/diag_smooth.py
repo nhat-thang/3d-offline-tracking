@@ -1,10 +1,10 @@
-"""Đo xem bước làm mượt (d) sửa đúng hay làm sai ở những tình huống khó, so với GT (chỉ dùng tập dev).
-Ghép box thật của B0 với GT cùng lớp mỗi frame (Hungarian, tâm < 2 m), rồi so cùng box TRƯỚC và SAU khi làm mượt:
-  - lật hướng: box đúng hướng bị làm lật (làm sai) / box lật được sửa đúng; tách riêng xe đang LÙI
+"""Đo xem bước smoothing (d) sửa đúng hay làm sai ở những tình huống khó, so với GT (chỉ dùng tập dev).
+Ghép real box của B0 với GT cùng lớp mỗi frame (Hungarian, tâm < 2 m), rồi so cùng box TRƯỚC và SAU khi smoothing:
+  - heading flip: box đúng hướng bị làm lật (làm sai) / box lật được sửa đúng; tách riêng xe đang LÙI
     (GT có vận tốc > 0,5 m/s ngược hướng đầu xe);
   - xe RẼ GẮT (GT đổi hướng > 20 độ/giây): sai số tâm trước/sau;
   - TRAILER, BUS: sai số kích thước (1 - IoU thể tích căn giữa) trước/sau, so với các lớp khác.
-Chạy: python offline/scripts/diag_smooth.py [tham số làm mượt, ví dụ --flip_mode majority --turn_rate 20 --local_size trailer,bus]"""
+Chạy: python offline/scripts/diag_smooth.py [tham số smoothing, ví dụ --flip_mode majority --turn_rate 20 --local_size trailer,bus]"""
 import sys, os, copy, pickle, argparse, collections
 import numpy as np
 from pyquaternion import Quaternion

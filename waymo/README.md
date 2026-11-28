@@ -26,12 +26,12 @@ Dữ liệu Waymo Open Dataset dùng theo giấy phép phi thương mại; dữ 
 | 7 | `tools/waymo_7_tao_moi_truong_ctrl.bat` | Dựng image `ctrl_env` |
 | 8 | `tools/waymo_8_chuan_bi_tracker.bat` → `prep_immortal.py` | Chuẩn bị timestamp, pose, detection cho ImmortalTracker |
 | 9 | `tools/waymo_9_bo_sung_moi_truong.bat` | Dựng image `ctrl_env2` |
-| 10 | `tools/waymo_10_chay_ctrl.bat` → `run_ctrl.sh` | Bước B: tracker → kéo dài → cắt điểm → refine không TTA → refine Track TTA → xóa box rỗng (GPU) |
-| 10b | `tools/waymo_10b_tta_xoa_rong.bat` | Chỉ chạy refine Track TTA và xóa box rỗng |
+| 10 | `tools/waymo_10_chay_ctrl.bat` → `run_ctrl.sh` | Bước B: tracker → kéo dài → point cropping → refine không TTA → refine Track TTA → empty-box removal (GPU) |
+| 10b | `tools/waymo_10b_tta_xoa_rong.bat` | Chỉ chạy refine Track TTA và empty-box removal |
 | 11 | `tools/waymo_11_cham_subset.bat` → `eval_subset.sh` | Chấm mọi kết quả trên các chuỗi trong `subset8.txt` |
 | 12 | `tools/waymo_12_so_box.bat` → `compare_boxes.py` | So từng box của bản chạy lại với kết quả chính thức |
-| 13 | `tools/waymo_13_ban_de_xuat.bat` → `run_ours_refine.sh`, `eval_ours.sh` | Bước C: đưa kết quả của phương pháp đề xuất qua kéo dài, cắt điểm, refine CTRL, xóa box rỗng; chấm cả hai bản ở từng giai đoạn |
-| 14 | `tools/waymo_14_cham_tracking.bat` → `eval_track.sh`, `eval_track.py` | Chấm metric tracking của Waymo (MOTA, MOTP, bỏ sót, đổi ID, báo nhầm) cho CTRL và phương pháp đề xuất |
+| 13 | `tools/waymo_13_ban_de_xuat.bat` → `run_ours_refine.sh`, `eval_ours.sh` | Bước C: đưa kết quả của phương pháp đề xuất qua kéo dài, point cropping, refine CTRL, empty-box removal; chấm cả hai bản ở từng giai đoạn |
+| 14 | `tools/waymo_14_cham_tracking.bat` → `eval_track.sh`, `eval_track.py` | Chấm metric tracking của Waymo (MOTA, MOTP, miss, ID switch, false positive) cho CTRL và phương pháp đề xuất |
 
 `ours.bin` dùng ở bước 13 được tạo bằng `ours_waymo.py` (cần numpy, scipy, pandas và file proto Waymo):
 
@@ -62,6 +62,6 @@ Mở `offline/results/waymo/subset8/loi_ctrl/anh/index.html` để xem.
 |---|---|
 | `boxgeo.py` | IoU 3D, đọc `.npz`, đọc điểm LiDAR (dùng chung) |
 | `ctrl_test.py` | Gọi `tools/test.py` của SST với cấu hình sửa trong bộ nhớ (batch, Track TTA, file track đầu vào) |
-| `make_ctx2ts.py` | Tạo `context2timestamp.pkl` cho bước kéo dài |
+| `make_ctx2ts.py` | Tạo `context2timestamp.pkl` cho bước track extension |
 | `inspect_bin.py` | Xem nhanh một file `.bin` |
 | `subset8.txt` | 8 chuỗi validation đầu tiên theo thứ tự tên |

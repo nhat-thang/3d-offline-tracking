@@ -1,4 +1,4 @@
-"""Phân tích độ chính xác của box kéo dài: box nào có GT (đã lọc như bộ chấm nuScenes) trong vòng 2 m thì tính là đúng.
+"""Phân tích độ chính xác của box extension: box nào có GT (đã lọc như evaluator nuScenes) trong vòng 2 m thì tính là đúng.
 Chạy: python offline/scripts/analyze_ext.py <tag> dev"""
 import sys, os, pickle, collections
 import numpy as np

@@ -11,7 +11,7 @@ button{padding:5px 12px}#info{font-variant-numeric:tabular-nums}
 <div class="row"><button id="play">Chạy</button><input type="range" id="fr" min="0" value="0" style="flex:1;min-width:240px"><span id="info"></span></div>
 <div class="row">
 <label><input type="checkbox" id="cgt" checked> Nhãn thật (GT)</label>
-<label><input type="checkbox" id="clow"> Track dưới ngưỡng</label>
+<label><input type="checkbox" id="clow"> Track dưới threshold</label>
 <label><input type="checkbox" id="ctrail" checked> Vệt quỹ đạo</label>
 <label><input type="checkbox" id="cid"> Hiện ID</label>
 <label><input type="checkbox" id="cfollow" checked> Bám theo xe ego</label>
@@ -22,13 +22,13 @@ button{padding:5px 12px}#info{font-variant-numeric:tabular-nums}
 <div class="row">
 <span class="lg"><span class="sw" style="border-color:#888;border-style:dashed;background:#eee"></span>Nhãn thật (GT)</span>
 <span class="lg"><span class="sw" style="border-color:#2c64a8"></span>Box track có detection (màu theo ID)</span>
-<span class="lg"><span class="sw" style="border-color:#2c64a8;border-style:dashed"></span>Box dự đoán Kalman (không có detection)</span>
-<span class="lg"><span class="sw" style="border-color:#bbb"></span>Track dưới ngưỡng của bộ chấm</span>
+<span class="lg"><span class="sw" style="border-color:#2c64a8;border-style:dashed"></span>Predicted box Kalman (không có detection)</span>
+<span class="lg"><span class="sw" style="border-color:#bbb"></span>Track dưới threshold của evaluator</span>
 <span class="lg"><span class="sw" style="border-color:#111;background:#111"></span>Xe ego</span>
 </div>
 <script>
 const D=__DATA__;const F=D.frames,N=F.length;const $=id=>document.getElementById(id);
-$('title').textContent='Kết quả tracking ('+D.tag+') · '+D.name+' · góc nhìn từ trên xuống';$('desc').textContent=D.desc+' · Ngưỡng bộ chấm theo class: '+D.cls.map(c=>c+' '+D.thr[c]).join(', ');
+$('title').textContent='Kết quả tracking ('+D.tag+') · '+D.name+' · góc nhìn từ trên xuống';$('desc').textContent=D.desc+' · Threshold evaluator theo class: '+D.cls.map(c=>c+' '+D.thr[c]).join(', ');
 D.cls.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c;$('cls').appendChild(o);});
 $('fr').max=N-1;const cv=$('cv'),g=cv.getContext('2d');
 const trail={};F.forEach((f,i)=>f.tr.forEach(b=>{(trail[b[6]]=trail[b[6]]||[]).push([i,b[0],b[1],b[9],b[5]]);}));
@@ -50,7 +50,7 @@ nt++;if(b[8])np++;box(b,col(b[6]),null,b[8]?[5,4]:[],2.2,1);
 if($('cid').checked){g.fillStyle=col(b[6]);g.font='11px system-ui';g.fillText(b[6],X(b[0])+6,Y(b[1])-6);}});
 g.save();g.translate(X(f.ego[0]),Y(f.ego[1]));g.rotate(-f.ego[2]);g.fillStyle='#111';g.fillRect(-2.3*s,-1*s,4.6*s,2*s);g.restore();
 const ng=f.gt.filter(b=>cf<0||b[5]==cf).length;
-$('info').textContent='Frame '+(cur+1)+'/'+N+' · GT '+ng+' · track trên ngưỡng '+nt+' (trong đó '+np+' box dự đoán) · track dưới ngưỡng '+nl;}
+$('info').textContent='Frame '+(cur+1)+'/'+N+' · GT '+ng+' · track trên threshold '+nt+' (trong đó '+np+' predicted box) · track dưới threshold '+nl;}
 $('fr').oninput=e=>{cur=+e.target.value;draw();};['cgt','clow','ctrail','cid','cfollow','cls','zoom'].forEach(i=>$(i).oninput=draw);
 $('play').onclick=()=>{if(timer){clearInterval(timer);timer=null;$('play').textContent='Chạy';}else{$('play').textContent='Dừng';timer=setInterval(()=>{cur=(cur+1)%N;$('fr').value=cur;draw();},500);}};
 draw();

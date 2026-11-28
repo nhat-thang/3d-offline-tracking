@@ -1,6 +1,6 @@
-"""Đo độ chính xác của bước (a) nối track: mỗi lần nối track A (trước) với track B (sau), xem A và B bám vật GT nào.
-Ghép box thật (score >= PRED_SCORE) với GT cùng lớp mỗi frame bằng Hungarian, ngưỡng tâm 2 m (như bộ chấm nuScenes).
-Vật GT của A = vật ghép nhiều nhất trong 3 box thật cuối của A; của B = trong 3 box thật đầu của B.
+"""Đo độ chính xác của bước (a) track linking: mỗi lần track linking A (trước) với track B (sau), xem A và B bám vật GT nào.
+Ghép real box (score >= PRED_SCORE) với GT cùng lớp mỗi frame bằng Hungarian, threshold tâm 2 m (như evaluator nuScenes).
+Vật GT của A = vật ghép nhiều nhất trong 3 real box cuối của A; của B = trong 3 real box đầu của B.
 Phân loại: đúng (cùng vật), SAI (hai vật khác nhau), một phía là nhiễu (không ghép GT).
 Chạy: python offline/scripts/link_precision.py dev [tham số pipeline, ví dụ --d0 0.8]"""
 import sys, os, pickle, collections, argparse

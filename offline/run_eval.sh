@@ -1,5 +1,5 @@
 #!/bin/bash
-# Chấm điểm nuScenes (bộ chấm chính thức) cho MỘT phiên bản trên một phần dữ liệu. Chạy từng bản một (tránh hết RAM).
+# Chấm điểm nuScenes (evaluator chính thức) cho MỘT phiên bản trên một phần dữ liệu. Chạy từng bản một (tránh hết RAM).
 # Dùng trong Docker:  cd /repro && source ~/imm_env/bin/activate && bash offline/run_eval.sh R1 dev
 set -e
 cd "$(dirname "$0")/.."
